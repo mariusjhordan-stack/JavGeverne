@@ -9,7 +9,7 @@ export default function OrderConfirmationPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getOrderById(id).then(r => setOrder(r.data)).catch(() => {}).finally(() => setLoading(false));
+    getOrderById(id).then(setOrder).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div className="flex justify-center py-20"><div className="animate-spin h-8 w-8 border-2 border-gold border-t-transparent rounded-full" /></div>;
@@ -24,7 +24,7 @@ export default function OrderConfirmationPage() {
         <Link to={`/orders/${id}`} className="inline-flex items-center gap-2 px-6 py-3 bg-navy text-white rounded-lg hover:bg-navy-light transition-colors">
           <Package className="w-4 h-4" /> View Order
         </Link>
-        <Link to="/collection" className="inline-flex items-center gap-2 px-6 py-3 border border-gray-200 text-gray-700 rounded-lg hover:border-gold transition-colors">
+        <Link to="/catalog" className="inline-flex items-center gap-2 px-6 py-3 border border-gray-200 text-gray-700 rounded-lg hover:border-gold transition-colors">
           Continue Shopping <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
