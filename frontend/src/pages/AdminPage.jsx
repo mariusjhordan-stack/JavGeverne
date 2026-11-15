@@ -1,171 +1,91 @@
 import { useState, useEffect } from 'react';
-import { getProducts, createProduct, updateProduct } from '../api/catalog';
-import { useAuth } from '../context/AuthContext';
+import { Plus, Package, Layers } from 'lucide-react';
 import { toast } from 'sonner';
-import { Plus, Edit3, Package, X } from 'lucide-react';
-
-const emptyProduct = { name: '', description: '', referenceNumber: '', brandId: '', categoryId: '', price: '', stock: '', caseMaterial: '', caseDiameter: '', movementType: 'AUTOMATIC', waterResistance: '', crystalType: '', dialColor: '', strapMaterial: '', powerReserve: '', imageUrl: '', featured: false, active: true };
+import { getProducts, createProduct, getBrands, getCategories } from '../api/catalog';
 
 export default function AdminPage() {
-  const { user } = useAuth();
   const [products, setProducts] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(emptyProduct);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [form, setForm] = useState({ name: '', description: '', referenceNumber: '', brandId: '', categoryId: '', price: '', stock: '10', caseMaterial: '', caseDiameter: '', movementType: 'AUTOMATIC', waterResistance: '', crystalType: '', dialColor: '', strapMaterial: '', powerReserve: '', imageUrl: '', featured: false, active: true });
 
-  const fetchProducts = () => {
-    setLoading(true);
-    getProducts({ page, size: 10 }).then(res => {
-      setProducts(res.data.content || res.data || []);
-      setTotalPages(res.data.totalPages || 1);
-    }).catch(() => toast.error('Failed to load products')).finally(() => setLoading(false));
-  };
+  useEffect(() => {
+    Promise.all([getProducts({ size: 100 }).catch(() => ({ content: [] })), getBrands().catch(() => []), getCategories().catch(() => [])])
+      .then(([p, b, c]) => { setProducts(p.content ?? (Array.isArray(p) ? p : [])); setBrands(Array.isArray(b) ? b : []); setCategories(Array.isArray(c) ? c : []); setLoading(false); });
+  }, []);
 
-  useEffect(fetchProducts, [page]);
-
-  if (user?.role !== 'ADMIN') {
-    return <div className="text-center py-20"><p className="text-gray-500">Access denied. Admin role required.</p></div>;
-  }
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
-  };
+  const handleChange = (e) => { const { name, value, type, checked } = e.target; setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value })); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const data = { ...form, price: parseFloat(form.price), stock: parseInt(form.stock) || 0, caseDiameter: form.caseDiameter ? parseFloat(form.caseDiameter) : null, brandId: form.brandId ? parseInt(form.brandId) : null, categoryId: form.categoryId ? parseInt(form.categoryId) : null };
-      if (editing) {
-        await updateProduct(editing, data);
-        toast.success('Product updated');
-      } else {
-        await createProduct(data);
-        toast.success('Product created');
-      }
+      const payload = { ...form, brandId: Number(form.brandId), categoryId: Number(form.categoryId), price: parseFloat(form.price), stock: parseInt(form.stock, 10) };
+      const created = await createProduct(payload);
+      setProducts((prev) => [created, ...prev]);
       setShowForm(false);
-      setEditing(null);
-      setForm(emptyProduct);
-      fetchProducts();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Operation failed');
-    }
-  };
-
-  const startEdit = (product) => {
-    setForm({ name: product.name || '', description: product.description || '', referenceNumber: product.referenceNumber || '', brandId: product.brandId || '', categoryId: product.categoryId || '', price: product.price || '', stock: product.stock || '', caseMaterial: product.caseMaterial || '', caseDiameter: product.caseDiameter || '', movementType: product.movementType || 'AUTOMATIC', waterResistance: product.waterResistance || '', crystalType: product.crystalType || '', dialColor: product.dialColor || '', strapMaterial: product.strapMaterial || '', powerReserve: product.powerReserve || '', imageUrl: product.imageUrl || '', featured: product.featured || false, active: product.active !== false });
-    setEditing(product.id);
-    setShowForm(true);
+      toast.success('Product created');
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to create product'); }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl text-navy">Admin Panel</h1>
-        <button onClick={() => { setShowForm(true); setEditing(null); setForm(emptyProduct); }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gold text-white rounded-lg hover:bg-gold-dark transition-colors">
-          <Plus className="w-4 h-4" /> Add Product
-        </button>
+        <div><p className="text-[#c9a94e] text-xs tracking-[0.3em] uppercase mb-1">Management</p><h1 className="font-[Playfair_Display] text-3xl text-[#1a1a2e]">Admin Panel</h1></div>
+        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 bg-[#1a1a2e] text-white px-5 py-2 text-sm uppercase tracking-wider hover:bg-[#2d2d44] transition-colors"><Plus size={16} /> Add Product</button>
       </div>
-
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="border border-gray-200 p-5"><Package className="text-[#c9a94e] mb-2" size={20} /><p className="text-2xl font-light text-[#1a1a2e]">{products.length}</p><p className="text-xs text-gray-500 uppercase tracking-wider">Products</p></div>
+        <div className="border border-gray-200 p-5"><Layers className="text-[#c9a94e] mb-2" size={20} /><p className="text-2xl font-light text-[#1a1a2e]">{brands.length}</p><p className="text-xs text-gray-500 uppercase tracking-wider">Brands</p></div>
+        <div className="border border-gray-200 p-5"><Layers className="text-[#c9a94e] mb-2" size={20} /><p className="text-2xl font-light text-[#1a1a2e]">{categories.length}</p><p className="text-xs text-gray-500 uppercase tracking-wider">Categories</p></div>
+      </div>
       {showForm && (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-sans font-semibold text-navy">{editing ? 'Edit Product' : 'New Product'}</h2>
-            <button onClick={() => { setShowForm(false); setEditing(null); }} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        <form onSubmit={handleSubmit} className="border border-gray-200 p-6 mb-8">
+          <h3 className="font-[Playfair_Display] text-xl text-[#1a1a2e] mb-4">New Product</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input name="name" value={form.name} onChange={handleChange} placeholder="Name" required className="px-3 py-2 border border-gray-200 text-sm focus:border-[#c9a94e] focus:outline-none" />
+            <input name="referenceNumber" value={form.referenceNumber} onChange={handleChange} placeholder="Ref. Number" className="px-3 py-2 border border-gray-200 text-sm focus:border-[#c9a94e] focus:outline-none" />
+            <input name="price" value={form.price} onChange={handleChange} placeholder="Price" type="number" step="0.01" required className="px-3 py-2 border border-gray-200 text-sm focus:border-[#c9a94e] focus:outline-none" />
+            <select name="brandId" value={form.brandId} onChange={handleChange} required className="px-3 py-2 border border-gray-200 text-sm bg-white"><option value="">Brand</option>{brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
+            <select name="categoryId" value={form.categoryId} onChange={handleChange} required className="px-3 py-2 border border-gray-200 text-sm bg-white"><option value="">Category</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            <input name="stock" value={form.stock} onChange={handleChange} placeholder="Stock" type="number" className="px-3 py-2 border border-gray-200 text-sm" />
+            <select name="movementType" value={form.movementType} onChange={handleChange} className="px-3 py-2 border border-gray-200 text-sm bg-white"><option value="AUTOMATIC">Automatic</option><option value="MANUAL">Manual</option><option value="QUARTZ">Quartz</option></select>
+            <input name="caseMaterial" value={form.caseMaterial} onChange={handleChange} placeholder="Case Material" className="px-3 py-2 border border-gray-200 text-sm" />
+            <input name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="Image URL" className="px-3 py-2 border border-gray-200 text-sm" />
           </div>
-          <form onSubmit={handleSubmit} className="grid md:grid-cols-3 gap-4">
-            <input name="name" placeholder="Product Name *" value={form.name} onChange={handleChange} required className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="referenceNumber" placeholder="Reference Number" value={form.referenceNumber} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="price" placeholder="Price *" type="number" step="0.01" value={form.price} onChange={handleChange} required className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="stock" placeholder="Stock" type="number" value={form.stock} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="brandId" placeholder="Brand ID" type="number" value={form.brandId} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="categoryId" placeholder="Category ID" type="number" value={form.categoryId} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <select name="movementType" value={form.movementType} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold">
-              <option value="AUTOMATIC">Automatic</option>
-              <option value="MANUAL">Manual</option>
-              <option value="QUARTZ">Quartz</option>
-            </select>
-            <input name="caseMaterial" placeholder="Case Material" value={form.caseMaterial} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="caseDiameter" placeholder="Case Diameter (mm)" type="number" step="0.1" value={form.caseDiameter} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="waterResistance" placeholder="Water Resistance" value={form.waterResistance} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="dialColor" placeholder="Dial Color" value={form.dialColor} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="strapMaterial" placeholder="Strap Material" value={form.strapMaterial} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            <input name="imageUrl" placeholder="Image URL" value={form.imageUrl} onChange={handleChange} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold md:col-span-2" />
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="featured" checked={form.featured} onChange={handleChange} className="accent-gold" /> Featured</label>
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" checked={form.active} onChange={handleChange} className="accent-gold" /> Active</label>
-            </div>
-            <div className="md:col-span-3">
-              <textarea name="description" placeholder="Description" value={form.description} onChange={handleChange} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-            </div>
-            <div className="md:col-span-3">
-              <button type="submit" className="px-6 py-2.5 bg-navy text-white rounded-lg hover:bg-navy-light transition-colors text-sm">
-                {editing ? 'Update Product' : 'Create Product'}
-              </button>
-            </div>
-          </form>
-        </div>
+          <textarea name="description" value={form.description} onChange={handleChange} placeholder="Description" rows={3} className="w-full mt-4 px-3 py-2 border border-gray-200 text-sm" />
+          <div className="flex items-center gap-6 mt-4">
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="featured" checked={form.featured} onChange={handleChange} className="accent-[#c9a94e]" /> Featured</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" checked={form.active} onChange={handleChange} className="accent-[#c9a94e]" /> Active</label>
+          </div>
+          <div className="flex gap-3 mt-6">
+            <button type="submit" className="bg-[#c9a94e] text-[#1a1a2e] px-6 py-2 text-sm uppercase tracking-wider font-medium hover:bg-[#d4b86a] transition-colors">Create</button>
+            <button type="button" onClick={() => setShowForm(false)} className="text-sm text-gray-500">Cancel</button>
+          </div>
+        </form>
       )}
-
       {loading ? (
-        <div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-2 border-gold border-t-transparent rounded-full" /></div>
+        <div className="flex justify-center py-20"><div className="w-10 h-10 border-2 border-[#c9a94e] border-t-transparent rounded-full animate-spin" /></div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div className="border border-gray-200 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-navy text-white">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Product</th>
-                <th className="px-4 py-3 text-left font-medium">Price</th>
-                <th className="px-4 py-3 text-left font-medium">Stock</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-left font-medium">Actions</th>
-              </tr>
-            </thead>
+            <thead><tr className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500"><th className="px-4 py-3">Product</th><th className="px-4 py-3">Brand</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Stock</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>
-              {products.map(p => (
-                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-cream rounded flex items-center justify-center">
-                        {p.imageUrl ? <img src={p.imageUrl} alt="" className="w-full h-full object-cover rounded" /> : <Package className="w-5 h-5 text-gray-400" />}
-                      </div>
-                      <div>
-                        <p className="font-medium text-navy">{p.name}</p>
-                        <p className="text-xs text-gray-400">{p.referenceNumber}</p>
-                      </div>
-                    </div>
+              {products.map((p) => (
+                <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
+                  <td className="px-4 py-3 flex items-center gap-3">
+                    <img src={p.imageUrl || 'https://placehold.co/40x40/1a1a2e/c9a94e?text=W'} alt={p.name} className="w-10 h-10 object-cover bg-[#f5f0e8]" />
+                    <div><p className="font-medium text-[#1a1a2e]">{p.name}</p><p className="text-xs text-gray-400">{p.referenceNumber}</p></div>
                   </td>
-                  <td className="px-4 py-3 font-medium">${p.price?.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    <span className={p.stock > 0 ? 'text-green-600' : 'text-red-600'}>{p.stock}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs ${p.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {p.active ? 'Active' : 'Inactive'}
-                    </span>
-                    {p.featured && <span className="ml-1 px-2 py-1 rounded text-xs bg-gold/10 text-gold">Featured</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => startEdit(p)} className="text-gold hover:text-gold-dark"><Edit3 className="w-4 h-4" /></button>
-                  </td>
+                  <td className="px-4 py-3 text-gray-600">{p.brandName}</td>
+                  <td className="px-4 py-3">${Number(p.price).toLocaleString()}</td>
+                  <td className="px-4 py-3"><span className={p.stock <= 3 ? 'text-red-500 font-medium' : ''}>{p.stock}</span></td>
+                  <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded ${p.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{p.active ? 'Active' : 'Inactive'}</span></td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 p-4">
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button key={i} onClick={() => setPage(i)}
-                  className={`px-3 py-1 rounded text-sm ${page === i ? 'bg-navy text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>
