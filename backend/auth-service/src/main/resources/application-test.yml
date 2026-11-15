@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:auth_test_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+
+app:
+  jwt:
+    secret: dGVzdC1qd3Qtc2VjcmV0LWtleS1mb3ItY3Jvbm9zLWdlbmV2ZS10ZXN0LWVudi0yMDI0LXNlY3VyZQ==
+    expiration: 3600000
+    refresh-expiration: 86400000
