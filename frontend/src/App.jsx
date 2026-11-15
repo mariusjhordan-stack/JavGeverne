@@ -34,6 +34,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/collection" element={<CatalogPage />} />
           <Route path="/product/:id" element={<ProductDetailPage />} />
           <Route path="/compare" element={<ComparePage />} />
