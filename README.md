@@ -90,7 +90,23 @@ Access the application:
 
 ## Local Development
 
-### Backend Services
+### Without Docker (H2 Database)
+
+Run all services using the `local` profile with embedded H2 database (no PostgreSQL needed):
+
+```bash
+# Start backend services (each in a separate terminal)
+cd backend/auth-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
+cd backend/catalog-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
+cd backend/order-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
+cd backend/payment-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
+cd backend/notification-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
+cd backend/api-gateway && mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Demo accounts are created automatically on startup. Seed data (12 watches, 3 brands, 4 categories) is also loaded automatically.
+
+### With Docker (PostgreSQL)
 
 Each service can be run independently. First start PostgreSQL:
 
@@ -111,6 +127,16 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 cd frontend
 npm install
 npm run dev
+```
+
+### Running Tests
+
+```bash
+# Run all tests (76 total)
+cd backend/auth-service && mvn test      # 31 tests
+cd backend/catalog-service && mvn test   # 19 tests
+cd backend/order-service && mvn test     # 14 tests
+cd backend/payment-service && mvn test   # 12 tests
 ```
 
 ## Demo Accounts
