@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { getProducts, getBrands, getCategories } from '../api/catalog';
+import { money } from '../lib/format';
+import Reveal from '../components/Reveal';
+import Photo from '../components/Photo';
 
 export default function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,146 +55,91 @@ export default function CatalogPage() {
       .finally(() => setLoading(false));
   }, [page, search, brandId, categoryId, sort]);
 
+  const filtersActive = brandId || categoryId || search;
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-navy py-16 text-center">
-        <p className="text-gold tracking-[0.3em] uppercase text-xs mb-3">Discover</p>
-        <h1 className="font-serif text-4xl md:text-5xl text-white">Our Collection</h1>
-      </div>
+    <div>
+      <header className="max-w-[88rem] mx-auto px-6 lg:px-12 pt-8 pb-14">
+        <p className="eyebrow mb-4">The collection</p>
+        <h1 className="display text-6xl lg:text-8xl text-ink">Every <em>timepiece</em></h1>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-10">
-        {/* Search & Controls */}
-        <div className="flex flex-col md:flex-row gap-4 items-center mb-8">
-          <div className="relative flex-1 w-full">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search watches..."
-              defaultValue={search}
-              key={search}
-              aria-label="Search watches"
+      <div className="max-w-[88rem] mx-auto px-6 lg:px-12 pb-28">
+        <div className="flex flex-col md:flex-row gap-4 md:items-center border-y hairline py-4 mb-12">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-0 top-1/2 -translate-y-1/2 text-charcoal/50" aria-hidden="true" />
+            <input type="text" placeholder="Search by name, maison or reference" defaultValue={search} key={search} aria-label="Search watches"
               onKeyDown={(e) => e.key === 'Enter' && updateParam('q', e.target.value.trim())}
-              className="w-full pl-12 pr-4 py-3 border border-gray-200 focus:border-gold focus:outline-none text-sm"
-            />
+              className="w-full pl-7 py-2 bg-transparent text-sm focus:outline-none placeholder:text-charcoal/50" />
           </div>
-          <select
-            value={sort}
-            aria-label="Sort products"
-            onChange={(e) => updateParam('sort', e.target.value)}
-            className="px-4 py-3 border border-gray-200 text-sm focus:outline-none focus:border-gold bg-white"
-          >
+          <select value={sort} onChange={(e) => updateParam('sort', e.target.value)} aria-label="Sort products"
+            className="bg-transparent text-xs tracking-[0.18em] uppercase py-2 focus:outline-none cursor-pointer">
             <option value="">Sort by</option>
-            <option value="price_asc">Price: Low to High</option>
-            <option value="price_desc">Price: High to Low</option>
-            <option value="newest">Newest First</option>
+            <option value="newest">Newest first</option>
+            <option value="price_asc">Price: low to high</option>
+            <option value="price_desc">Price: high to low</option>
             <option value="name">Name</option>
           </select>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="md:hidden flex items-center gap-2 px-4 py-3 border border-gray-200 text-sm"
-          >
-            <SlidersHorizontal size={16} /> Filters
+          <button onClick={() => setShowFilters(!showFilters)} className="md:hidden flex items-center gap-2 text-xs tracking-[0.18em] uppercase py-2">
+            <SlidersHorizontal size={15} /> Filters
           </button>
         </div>
 
-        <div className="flex gap-10">
-          {/* Sidebar Filters */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-64 shrink-0`}>
-            {(brandId || categoryId || search) && (
-              <button
-                onClick={() => setSearchParams({})}
-                className="flex items-center gap-1 text-sm text-gold mb-4 hover:underline"
-              >
-                <X size={14} /> Clear filters
-              </button>
+        <div className="grid lg:grid-cols-[13rem_1fr] gap-14">
+          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block`} aria-label="Filters">
+            {filtersActive && (
+              <button onClick={() => setSearchParams({})} className="flex items-center gap-1 text-xs tracking-[0.18em] uppercase text-gold-dark mb-8"><X size={13} /> Clear</button>
             )}
-            <div className="mb-8">
-              <h3 className="font-serif text-lg text-navy mb-4">Brand</h3>
-              {brands.map((b) => (
-                <label key={b.id} className="flex items-center gap-2 mb-2 cursor-pointer text-sm">
-                  <input
-                    type="radio"
-                    name="brand"
-                    checked={brandId === String(b.id)}
-                    onChange={() => updateParam('brandId', brandId === String(b.id) ? '' : String(b.id))}
-                    className="accent-gold"
-                  />
-                  {b.name}
-                </label>
-              ))}
-            </div>
-            <div className="mb-8">
-              <h3 className="font-serif text-lg text-navy mb-4">Category</h3>
-              {categories.map((c) => (
-                <label key={c.id} className="flex items-center gap-2 mb-2 cursor-pointer text-sm">
-                  <input
-                    type="radio"
-                    name="category"
-                    checked={categoryId === String(c.id)}
-                    onChange={() => updateParam('categoryId', categoryId === String(c.id) ? '' : String(c.id))}
-                    className="accent-gold"
-                  />
-                  {c.name}
-                </label>
-              ))}
-            </div>
+            {[['Maison', brands, brandId, 'brandId'], ['Family', categories, categoryId, 'categoryId']].map(([title, list, current, key]) => (
+              <fieldset key={title} className="mb-10">
+                <legend className="eyebrow mb-4">{title}</legend>
+                <ul className="space-y-2.5">
+                  {list.map((o) => (
+                    <li key={o.id}>
+                      <label className="flex items-center gap-3 cursor-pointer text-sm hover:text-gold-dark">
+                        <input type="radio" name={key} checked={current === String(o.id)} onChange={() => updateParam(key, current === String(o.id) ? '' : String(o.id))} className="accent-gold-dark" />
+                        {o.name}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </fieldset>
+            ))}
           </aside>
 
-          {/* Product Grid */}
-          <div className="flex-1">
+          <div>
             {loading ? (
-              <div className="flex justify-center py-20">
-                <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-              </div>
+              <p className="py-24 text-center text-sm text-charcoal/60" role="status">Loading…</p>
             ) : products.length === 0 ? (
-              <div className="text-center py-20 text-gray-500">
-                <p className="text-lg mb-2">No watches found</p>
-                <p className="text-sm">Try adjusting your filters or search terms.</p>
+              <div className="py-24 text-center">
+                <p className="font-serif text-3xl text-ink mb-2">No watch matches</p>
+                <p className="text-sm text-charcoal/70">Try another search or clear the filters.</p>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {products.map((p) => (
-                    <Link key={p.id} to={`/product/${p.id}`} className="group block" data-testid="product-card">
-                      <div className="aspect-square bg-cream overflow-hidden mb-3">
-                        <img
-                          src={p.imageUrl || 'https://placehold.co/600x600/1a1a2e/c9a94e?text=Watch'}
-                          alt={p.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      </div>
-                      <p className="text-xs text-gold tracking-[0.15em] uppercase">{p.brandName}</p>
-                      <h3 className="font-serif text-base text-navy group-hover:text-gold transition-colors mt-1">{p.name}</h3>
-                      <p className="text-sm text-charcoal mt-1">${Number(p.price).toLocaleString()}</p>
-                      {p.stock !== undefined && p.stock <= 0 && (
-                        <p className="text-xs text-red-500 mt-1">Out of stock</p>
-                      )}
-                    </Link>
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-16">
+                  {products.map((p, i) => (
+                    <Reveal key={p.id} delay={i % 3} className={i % 3 === 1 ? 'xl:mt-12' : ''}>
+                      <Link to={`/product/${p.id}`} className="group block" data-testid="product-card">
+                        <Photo src={p.imageUrl} alt={p.name} ratio="3 / 4" />
+                        <div className="flex justify-between gap-4 mt-4">
+                          <div>
+                            <p className="eyebrow">{p.brandName}</p>
+                            <h2 className="font-serif text-xl text-ink group-hover:text-gold-dark transition-colors">{p.name}</h2>
+                          </div>
+                          <p className="text-sm text-charcoal/80 pt-4 whitespace-nowrap">{money(p.price, p.currency)}</p>
+                        </div>
+                        {p.stock <= 0 && <p className="text-xs text-red-700 mt-1">Currently unavailable</p>}
+                      </Link>
+                    </Reveal>
                   ))}
                 </div>
 
-                {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex justify-center items-center gap-4 mt-14">
-                    <button
-                      disabled={page <= 0}
-                      onClick={() => updateParam('page', String(page - 1))}
-                      className="p-2 border border-gray-200 disabled:opacity-30 hover:border-gold transition-colors"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <span className="text-sm text-gray-600">
-                      Page {page + 1} of {totalPages}
-                    </span>
-                    <button
-                      disabled={page >= totalPages - 1}
-                      onClick={() => updateParam('page', String(page + 1))}
-                      className="p-2 border border-gray-200 disabled:opacity-30 hover:border-gold transition-colors"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
+                  <nav className="flex justify-center items-center gap-6 mt-20" aria-label="Pagination">
+                    <button disabled={page <= 0} onClick={() => updateParam('page', String(page - 1))} aria-label="Previous page" className="p-2 disabled:opacity-30 hover:text-gold-dark"><ChevronLeft size={20} /></button>
+                    <span className="text-xs tracking-[0.2em] uppercase">Page {page + 1} of {totalPages}</span>
+                    <button disabled={page >= totalPages - 1} onClick={() => updateParam('page', String(page + 1))} aria-label="Next page" className="p-2 disabled:opacity-30 hover:text-gold-dark"><ChevronRight size={20} /></button>
+                  </nav>
                 )}
               </>
             )}

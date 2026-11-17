@@ -2,27 +2,74 @@
 
 @theme {
   --color-gold: #c9a94e;
-  --color-gold-light: #d4b86a;
-  --color-gold-dark: #a88a3e;
-  --color-navy: #1a1a2e;
-  --color-navy-light: #2d2d44;
+  --color-gold-light: #d9bf72;
+  --color-gold-dark: #8a6d1f;
+  --color-navy: #14142a;
+  --color-navy-light: #26264a;
+  --color-ink: #0d0d1a;
   --color-charcoal: #2c2c2c;
   --color-cream: #f5f0e8;
   --color-cream-dark: #e8e0d0;
-  --font-serif: 'Playfair Display', Georgia, serif;
+  --color-bone: #faf8f4;
+  --font-serif: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
   --font-sans: 'Inter', system-ui, sans-serif;
+  --ease-lux: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
+  html { scroll-behavior: smooth; }
   body {
     font-family: var(--font-sans);
     color: var(--color-charcoal);
-    background-color: #fafaf8;
+    background-color: var(--color-bone);
     -webkit-font-smoothing: antialiased;
     margin: 0;
   }
+  h1, h2, h3, h4, h5, h6 { font-family: var(--font-serif); font-weight: 500; letter-spacing: -0.01em; }
+  :focus-visible { outline: 2px solid var(--color-gold-dark); outline-offset: 3px; }
+  ::selection { background: var(--color-gold); color: var(--color-ink); }
+}
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-serif);
+@layer components {
+  .eyebrow { font-size: 0.7rem; letter-spacing: 0.32em; text-transform: uppercase; color: var(--color-gold-dark); }
+  .eyebrow-light { color: var(--color-gold); }
+  .display { font-family: var(--font-serif); font-weight: 400; line-height: 0.98; letter-spacing: -0.02em; }
+  .btn-line {
+    display: inline-flex; align-items: center; gap: 0.75rem; font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase;
+    padding-bottom: 0.4rem; border-bottom: 1px solid currentColor; transition: gap 0.4s var(--ease-lux), color 0.3s;
   }
+  .btn-line:hover { gap: 1.25rem; color: var(--color-gold-dark); }
+  .btn-solid {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem; font-size: 0.72rem; letter-spacing: 0.22em;
+    text-transform: uppercase; padding: 1rem 2.25rem; background: var(--color-ink); color: white; transition: background 0.3s, transform 0.4s var(--ease-lux);
+  }
+  .btn-solid:hover { background: var(--color-gold-dark); }
+  .btn-gold { background: var(--color-gold); color: var(--color-ink); }
+  .btn-gold:hover { background: var(--color-gold-light); }
+  .photo { position: relative; overflow: hidden; background: var(--color-cream); }
+  .photo img { width: 100%; height: 100%; object-fit: cover; transition: transform 1.4s var(--ease-lux); }
+  .photo:hover img { transform: scale(1.04); }
+  .photo-empty { background: linear-gradient(135deg, var(--color-cream) 0%, var(--color-cream-dark) 100%); }
+  .hairline { border-color: rgba(20, 20, 42, 0.12); }
+}
+
+/* Reveal on scroll: content is visible by default; motion only applies when scripting + motion are allowed. */
+.reveal { transition: opacity 1.1s var(--ease-lux), transform 1.1s var(--ease-lux); }
+.js-motion .reveal:not(.is-visible) { opacity: 0; transform: translateY(28px); }
+.js-motion .reveal-fade:not(.is-visible) { opacity: 0; transform: none; }
+.js-motion .reveal-left:not(.is-visible) { opacity: 0; transform: translateX(-36px); }
+.reveal[data-delay="1"] { transition-delay: 0.12s; }
+.reveal[data-delay="2"] { transition-delay: 0.24s; }
+.reveal[data-delay="3"] { transition-delay: 0.36s; }
+
+@keyframes page-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.page-enter { animation: page-in 0.7s var(--ease-lux) both; }
+
+@keyframes slow-zoom { from { transform: scale(1.0); } to { transform: scale(1.08); } }
+.hero-zoom { animation: slow-zoom 22s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+  .js-motion .reveal:not(.is-visible) { opacity: 1 !important; transform: none !important; }
 }

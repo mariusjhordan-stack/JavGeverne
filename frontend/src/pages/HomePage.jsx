@@ -1,145 +1,151 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Shield, Star, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { getFeaturedProducts, getBrands } from '../api/catalog';
-
-const BRAND_TAGLINES = {
-  Rolex: 'A Crown for Every Achievement',
-  Omega: 'The Sign of Excellence',
-  'TAG Heuer': "Don't Crack Under Pressure",
-};
+import { money } from '../lib/format';
+import { EDITORIAL } from '../lib/images';
+import Reveal from '../components/Reveal';
+import Photo from '../components/Photo';
 
 export default function HomePage() {
   const [featured, setFeatured] = useState([]);
   const [brands, setBrands] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getFeaturedProducts().catch(() => []), getBrands().catch(() => [])])
-      .then(([f, b]) => {
-        setFeatured(Array.isArray(f) ? f : f?.content ?? []);
-        setBrands(Array.isArray(b) ? b : []);
-      })
-      .finally(() => setLoading(false));
+    getFeaturedProducts().then((f) => setFeatured(Array.isArray(f) ? f : [])).catch(() => {});
+    getBrands().then((b) => setBrands(Array.isArray(b) ? b : [])).catch(() => {});
   }, []);
+
+  const lead = featured[0];
+  const rest = featured.slice(1, 5);
 
   return (
     <div>
       {/* Hero */}
-      <section className="relative bg-navy min-h-[85vh] flex items-center justify-center text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-navy/80 via-navy/60 to-navy" />
-        <div className="relative z-10 max-w-4xl mx-auto px-6">
-          <p className="text-gold tracking-[0.35em] uppercase text-sm mb-6 font-light">Est. Geneva, Switzerland</p>
-          <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl text-white leading-tight mb-6">
-            The Art of Swiss Timekeeping
-          </h1>
-          <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto mb-10 font-light leading-relaxed">
-            Discover our curated collection of the world's finest timepieces, each a masterpiece of precision engineering and timeless design.
-          </p>
-          <Link
-            to="/collection"
-            className="inline-flex items-center gap-3 bg-gold hover:bg-gold-light text-navy px-10 py-4 text-sm uppercase tracking-[0.2em] font-medium transition-colors"
-          >
-            Explore Collection <ArrowRight size={16} />
-          </Link>
+      <section className="relative min-h-[100svh] bg-ink text-white overflow-hidden flex items-end">
+        <Photo src={EDITORIAL.hero} alt="" eager className="absolute inset-0 !bg-ink" imgClassName="hero-zoom opacity-70" position="60% 40%" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-ink/30" aria-hidden="true" />
+        <div className="relative z-10 max-w-[88rem] w-full mx-auto px-6 lg:px-12 pb-20 lg:pb-28 grid lg:grid-cols-12 gap-10 items-end">
+          <div className="lg:col-span-8">
+            <p className="eyebrow eyebrow-light mb-8">Genève · Since 1987</p>
+            <h1 className="display text-[3.4rem] sm:text-7xl lg:text-[8.5rem]">
+              The patience<br /><em className="text-gold">of precision</em>
+            </h1>
+          </div>
+          <div className="lg:col-span-4 lg:pb-3">
+            <p className="text-white/75 leading-relaxed mb-10 max-w-sm">
+              A considered selection of Swiss timepieces, chosen for how they are made and how long they will be loved.
+            </p>
+            <Link to="/collection" className="btn-line text-white">Enter the collection <ArrowRight size={14} /></Link>
+          </div>
         </div>
       </section>
 
-      {/* Featured */}
-      <section className="max-w-7xl mx-auto px-6 py-24">
-        <div className="text-center mb-16">
-          <p className="text-gold tracking-[0.3em] uppercase text-xs mb-3">Curated Selection</p>
-          <h2 className="font-serif text-4xl md:text-5xl text-navy">Featured Timepieces</h2>
-        </div>
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : featured.length === 0 ? (
-          <p className="text-center text-gray-500">No featured watches at the moment.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {featured.slice(0, 4).map((p) => (
-              <Link key={p.id} to={`/product/${p.id}`} className="group block">
-                <div className="aspect-square bg-cream overflow-hidden mb-4">
-                  <img
-                    src={p.imageUrl || 'https://placehold.co/600x600/1a1a2e/c9a94e?text=Watch'}
-                    alt={p.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
+      {/* Featured: asymmetric composition */}
+      <section className="max-w-[88rem] mx-auto px-6 lg:px-12 py-28 lg:py-40">
+        <Reveal className="max-w-xl mb-20">
+          <p className="eyebrow mb-5">This season</p>
+          <h2 className="display text-5xl lg:text-7xl text-ink">Selected <em>pieces</em></h2>
+        </Reveal>
+        {lead && (
+          <div className="grid lg:grid-cols-12 gap-x-12 gap-y-16 items-end">
+            <Reveal className="lg:col-span-7">
+              <Link to={`/product/${lead.id}`} className="group block">
+                <Photo src={lead.imageUrl} alt={lead.name} ratio="4 / 5" className="w-full" position="center 35%" />
+                <div className="flex items-baseline justify-between mt-6">
+                  <div>
+                    <p className="eyebrow">{lead.brandName}</p>
+                    <h3 className="font-serif text-3xl text-ink mt-1 group-hover:text-gold-dark transition-colors">{lead.name}</h3>
+                  </div>
+                  <p className="text-ink">{money(lead.price, lead.currency)}</p>
                 </div>
-                <p className="text-xs text-gold tracking-[0.2em] uppercase mb-1">{p.brandName}</p>
-                <h3 className="font-serif text-lg text-navy mb-1 group-hover:text-gold transition-colors">{p.name}</h3>
-                <p className="text-charcoal font-light">${Number(p.price).toLocaleString()}</p>
               </Link>
-            ))}
+            </Reveal>
+            <div className="lg:col-span-5 grid grid-cols-2 gap-x-8 gap-y-14 lg:pb-24">
+              {rest.map((p, i) => (
+                <Reveal key={p.id} delay={(i % 2) + 1} className={i % 2 ? 'mt-16' : ''}>
+                  <Link to={`/product/${p.id}`} className="group block">
+                    <Photo src={p.imageUrl} alt={p.name} ratio="3 / 4" />
+                    <p className="eyebrow mt-4">{p.brandName}</p>
+                    <h3 className="font-serif text-xl text-ink group-hover:text-gold-dark transition-colors">{p.name}</h3>
+                    <p className="text-sm text-charcoal/80 mt-1">{money(p.price, p.currency)}</p>
+                  </Link>
+                </Reveal>
+              ))}
+            </div>
           </div>
         )}
-        <div className="text-center mt-14">
-          <Link
-            to="/collection"
-            className="inline-flex items-center gap-2 border border-navy text-navy hover:bg-navy hover:text-white px-8 py-3 text-sm uppercase tracking-[0.2em] transition-colors"
-          >
-            View All Timepieces <ArrowRight size={14} />
-          </Link>
+        <Reveal className="mt-20">
+          <Link to="/collection" className="btn-line text-ink">View every timepiece <ArrowRight size={14} /></Link>
+        </Reveal>
+      </section>
+
+      {/* Heritage */}
+      <section className="bg-cream">
+        <div className="max-w-[88rem] mx-auto grid lg:grid-cols-12 items-center">
+          <Reveal variant="fade" className="lg:col-span-6 order-2 lg:order-1">
+            <Photo src={EDITORIAL.heritage} alt="" ratio="1 / 1" className="w-full" />
+          </Reveal>
+          <Reveal className="lg:col-span-5 lg:col-start-8 order-1 lg:order-2 px-6 lg:px-0 py-24 lg:py-32">
+            <p className="eyebrow mb-6">Heritage</p>
+            <h2 className="display text-5xl lg:text-6xl text-ink mb-8">Measured in <em>generations</em></h2>
+            <p className="text-charcoal/80 leading-relaxed mb-5">
+              Geneva has refined the wristwatch for centuries. We look for pieces that carry that discipline: movements finished by hand, cases that wear in rather than wear out.
+            </p>
+            <Link to="/heritage" className="btn-line text-ink mt-6">Read the story <ArrowRight size={14} /></Link>
+          </Reveal>
         </div>
       </section>
 
-      {/* Philosophy */}
-      <section className="bg-navy text-white py-24">
-        <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-3 gap-16 text-center">
-          {[
-            { icon: Clock, title: 'Precision', text: 'Every timepiece in our collection undergoes rigorous testing, ensuring accuracy that stands the test of time.' },
-            { icon: Shield, title: 'Authenticity', text: 'We guarantee the provenance of every watch, sourced directly from authorized Swiss manufacturers.' },
-            { icon: Star, title: 'Excellence', text: 'Curated by experts with decades of horological knowledge, our collection represents the pinnacle of Swiss watchmaking.' },
-          ].map(({ icon: Icon, title, text }) => (
-            <div key={title}>
-              <Icon size={36} className="text-gold mx-auto mb-6" strokeWidth={1} />
-              <h3 className="font-serif text-2xl mb-4">{title}</h3>
-              <p className="text-gray-400 font-light leading-relaxed">{text}</p>
-            </div>
-          ))}
+      {/* Maisons: a typographic list, not a grid of cards */}
+      <section className="max-w-[88rem] mx-auto px-6 lg:px-12 py-28 lg:py-40">
+        <div className="grid lg:grid-cols-12 gap-16">
+          <Reveal className="lg:col-span-4">
+            <p className="eyebrow mb-5">The maisons</p>
+            <h2 className="display text-5xl text-ink mb-6">Houses we <em>admire</em></h2>
+            <p className="text-sm text-charcoal/75 leading-relaxed max-w-xs">
+              Independent selection for a university demonstration. We are not an authorised dealer of any maison.
+            </p>
+          </Reveal>
+          <ul className="lg:col-span-7 lg:col-start-6 divide-y hairline border-y hairline">
+            {brands.map((b, i) => (
+              <Reveal as="li" key={b.id} delay={i % 3}>
+                <Link to={`/maisons/${b.slug}`} className="group flex items-baseline justify-between py-8">
+                  <span className="font-serif text-4xl lg:text-5xl text-ink group-hover:text-gold-dark group-hover:translate-x-3 transition-all duration-500">{b.name}</span>
+                  <span className="text-xs tracking-[0.2em] uppercase text-charcoal/60">{b.productCount} pieces</span>
+                </Link>
+              </Reveal>
+            ))}
+          </ul>
         </div>
       </section>
 
-      {/* Brands */}
-      <section className="max-w-6xl mx-auto px-6 py-24">
-        <div className="text-center mb-16">
-          <p className="text-gold tracking-[0.3em] uppercase text-xs mb-3">Our Maisons</p>
-          <h2 className="font-serif text-4xl text-navy">Distinguished Houses</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-10">
-          {(brands.length ? brands : [{ id: 1, name: 'Rolex' }, { id: 2, name: 'Omega' }, { id: 3, name: 'TAG Heuer' }]).map((b) => (
-            <Link
-              key={b.id}
-              to={`/collection?brandId=${b.id}`}
-              className="group border border-gray-200 hover:border-gold p-10 text-center transition-colors"
-            >
-              <h3 className="font-serif text-2xl text-navy group-hover:text-gold transition-colors mb-2">{b.name}</h3>
-              <p className="text-sm text-gray-500 font-light">{BRAND_TAGLINES[b.name] || b.description || 'Swiss Excellence'}</p>
-            </Link>
-          ))}
+      {/* Craftsmanship */}
+      <section className="bg-ink text-white">
+        <div className="max-w-[88rem] mx-auto px-6 lg:px-12 py-28 lg:py-40 grid lg:grid-cols-12 gap-16 items-center">
+          <Reveal className="lg:col-span-5">
+            <p className="eyebrow eyebrow-light mb-6">Craftsmanship</p>
+            <h2 className="display text-5xl lg:text-6xl mb-8">Where a tolerance is a <em className="text-gold">hair’s width</em></h2>
+            <p className="text-white/70 leading-relaxed mb-10 max-w-md">
+              Hundreds of components, finished, assembled and regulated by people. We explain what to look for, so a purchase is understood as well as admired.
+            </p>
+            <Link to="/craftsmanship" className="btn-line text-white">Inside the movement <ArrowRight size={14} /></Link>
+          </Reveal>
+          <Reveal variant="fade" className="lg:col-span-6 lg:col-start-7 grid grid-cols-5 gap-6 items-end">
+            <Photo src={EDITORIAL.craft} alt="" ratio="3 / 4" className="col-span-3 !bg-navy-light" />
+            <Photo src={EDITORIAL.craftDetail} alt="" ratio="1 / 1" className="col-span-2 !bg-navy-light mb-16" />
+          </Reveal>
         </div>
       </section>
 
-      {/* Newsletter */}
-      <section className="bg-cream py-20">
-        <div className="max-w-xl mx-auto px-6 text-center">
-          <h2 className="font-serif text-3xl text-navy mb-4">Stay Informed</h2>
-          <p className="text-gray-600 font-light mb-8">
-            Receive exclusive previews of new arrivals and private collection events.
-          </p>
-          <form className="flex gap-3" onSubmit={(e) => e.preventDefault()}>
-            <input
-              type="email"
-              placeholder="Your email address"
-              className="flex-1 px-5 py-3 border border-gray-300 focus:border-gold focus:outline-none text-sm"
-            />
-            <button className="bg-navy text-white px-8 py-3 text-sm uppercase tracking-[0.15em] hover:bg-navy-light transition-colors">
-              Subscribe
-            </button>
-          </form>
-        </div>
+      {/* Closing call */}
+      <section className="relative overflow-hidden">
+        <Photo src={EDITORIAL.lifestyle} alt="" className="absolute inset-0" />
+        <div className="absolute inset-0 bg-bone/80" aria-hidden="true" />
+        <Reveal className="relative max-w-3xl mx-auto px-6 py-32 lg:py-44 text-center">
+          <h2 className="display text-5xl lg:text-7xl text-ink mb-10">Find the one that <em>stays</em></h2>
+          <Link to="/collection" className="btn-solid">Explore the collection</Link>
+        </Reveal>
       </section>
     </div>
   );

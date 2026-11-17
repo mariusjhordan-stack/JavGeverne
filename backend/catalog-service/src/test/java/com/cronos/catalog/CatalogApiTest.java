@@ -48,6 +48,11 @@ class CatalogApiTest {
                 .header("X-User-Email", role.toLowerCase() + "@cronos.test").header("X-User-Role", role);
     }
 
+    MockHttpServletRequestBuilder asUser(MockHttpServletRequestBuilder b, UUID id) {
+        return b.header("X-Internal-Token", TOKEN).header("X-User-Id", id.toString())
+                .header("X-User-Email", id + "@cronos.test").header("X-User-Role", "USER");
+    }
+
     MockHttpServletRequestBuilder service(MockHttpServletRequestBuilder b) {
         return b.header("X-Internal-Token", TOKEN).contentType(MediaType.APPLICATION_JSON);
     }
@@ -261,5 +266,22 @@ class CatalogApiTest {
         assertThat(ok).isEqualTo(available);
         assertThat(conflict).isEqualTo(buyers - available);
         assertThat(stock(SEAMASTER)).isZero();
+    }
+
+    // ---------- favourites ----------
+
+    @Test
+    void favouritesArePrivatePerUser() throws Exception {
+        UUID alice = UUID.randomUUID();
+        UUID bob = UUID.randomUUID();
+        mvc.perform(get("/api/favorites")).andExpect(status().isUnauthorized());
+        mvc.perform(asUser(put("/api/favorites/" + SUBMARINER), alice)).andExpect(status().isOk());
+        mvc.perform(asUser(put("/api/favorites/" + SUBMARINER), alice)).andExpect(status().isOk());
+        mvc.perform(as(put("/api/favorites/" + UUID.randomUUID()), "USER")).andExpect(status().isNotFound());
+        mvc.perform(asUser(get("/api/favorites"), alice))
+                .andExpect(jsonPath("$", hasSize(1))).andExpect(jsonPath("$[0].id").value(SUBMARINER));
+        mvc.perform(asUser(get("/api/favorites"), bob)).andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(asUser(delete("/api/favorites/" + SUBMARINER), alice)).andExpect(status().isNoContent());
+        mvc.perform(asUser(get("/api/favorites"), alice)).andExpect(jsonPath("$", hasSize(0)));
     }
 }

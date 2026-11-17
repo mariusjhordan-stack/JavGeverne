@@ -12,7 +12,7 @@ export default function CartPage() {
         <h2 className="font-serif text-3xl text-navy mb-3">Your Cart is Empty</h2>
         <p className="text-gray-500 mb-8">Discover our collection of exceptional timepieces.</p>
         <Link
-          to="/catalog"
+          to="/collection"
           className="bg-navy text-white px-8 py-3 text-sm uppercase tracking-[0.15em] hover:bg-navy-light transition-colors"
         >
           Explore Collection
@@ -22,7 +22,7 @@ export default function CartPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">
-      <Link to="/catalog" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gold mb-8">
+      <Link to="/collection" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gold mb-8">
         <ArrowLeft size={16} /> Continue Shopping
       </Link>
       <h1 className="font-serif text-3xl text-navy mb-10">Shopping Cart</h1>

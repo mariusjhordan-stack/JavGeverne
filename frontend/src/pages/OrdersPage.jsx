@@ -23,8 +23,8 @@ export default function OrdersPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-16">
       <div className="text-center mb-10">
-        <p className="text-[#c9a94e] text-xs tracking-[0.3em] uppercase mb-2">Your Orders</p>
-        <h1 className="font-[Playfair_Display] text-3xl text-[#1a1a2e]">Order History</h1>
+        <p className="text-gold-dark text-xs tracking-[0.3em] uppercase mb-2">Your Orders</p>
+        <h1 className="font-serif text-3xl text-[#1a1a2e]">Order History</h1>
       </div>
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-10 h-10 border-2 border-[#c9a94e] border-t-transparent rounded-full animate-spin" /></div>
@@ -34,12 +34,12 @@ export default function OrdersPage() {
         <div className="text-center py-20">
           <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 mb-4">No orders yet.</p>
-          <Link to="/collection" className="text-[#c9a94e] hover:underline text-sm">Browse Collection</Link>
+          <Link to="/collection" className="text-gold-dark hover:underline text-sm">Browse Collection</Link>
         </div>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => (
-            <Link key={order.id} to={`/orders/${order.id}`} className="block border border-gray-200 hover:border-[#c9a94e] transition-colors p-5" data-testid="order-row">
+            <Link key={order.id} to={`/orders/${order.id}`} className="block border border-gray-200 hover:border-ink transition-colors p-5" data-testid="order-row">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Order #{order.id?.slice(0, 8)} &middot; {new Date(order.createdAt).toLocaleDateString()}</p>
