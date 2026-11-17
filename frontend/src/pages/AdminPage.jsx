@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Plus, Package, Layers } from 'lucide-react';
 import { toast } from 'sonner';
-import { getProducts, createProduct, getBrands, getCategories } from '../api/catalog';
+import { getBrands, getCategories } from '../api/catalog';
+import { listProducts, createProduct } from '../api/admin';
+import { errorMessage } from '../api/client';
 
 export default function AdminPage() {
   const [products, setProducts] = useState([]);
@@ -12,7 +14,7 @@ export default function AdminPage() {
   const [form, setForm] = useState({ name: '', description: '', referenceNumber: '', brandId: '', categoryId: '', price: '', stock: '10', caseMaterial: '', caseDiameter: '', movementType: 'AUTOMATIC', waterResistance: '', crystalType: '', dialColor: '', strapMaterial: '', powerReserve: '', imageUrl: '', featured: false, active: true });
 
   useEffect(() => {
-    Promise.all([getProducts({ size: 100 }).catch(() => ({ content: [] })), getBrands().catch(() => []), getCategories().catch(() => [])])
+    Promise.all([listProducts({ size: 48 }).catch(() => ({ content: [] })), getBrands().catch(() => []), getCategories().catch(() => [])])
       .then(([p, b, c]) => { setProducts(p.content ?? (Array.isArray(p) ? p : [])); setBrands(Array.isArray(b) ? b : []); setCategories(Array.isArray(c) ? c : []); setLoading(false); });
   }, []);
 
@@ -21,12 +23,14 @@ export default function AdminPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = { ...form, brandId: Number(form.brandId), categoryId: Number(form.categoryId), price: parseFloat(form.price), stock: parseInt(form.stock, 10) };
+      const { active: _active, ...fields } = form;
+      const payload = { ...fields, brandId: Number(form.brandId), categoryId: Number(form.categoryId), price: parseFloat(form.price), stock: parseInt(form.stock, 10) };
+      Object.keys(payload).forEach((k) => payload[k] === '' && delete payload[k]);
       const created = await createProduct(payload);
       setProducts((prev) => [created, ...prev]);
       setShowForm(false);
       toast.success('Product created');
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed to create product'); }
+    } catch (err) { toast.error(errorMessage(err, 'Failed to create product')); }
   };
 
   return (

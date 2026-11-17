@@ -33,7 +33,7 @@ export default function CartPage() {
             <div key={item.productId} className="flex gap-6 border-b border-gray-100 pb-6">
               <div className="w-28 h-28 bg-cream shrink-0">
                 <img
-                  src={item.image || 'https://placehold.co/200x200/1a1a2e/c9a94e?text=Watch'}
+                  src={item.image}
                   alt={item.name}
                   className="w-full h-full object-cover"
                 />

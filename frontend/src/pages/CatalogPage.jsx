@@ -13,7 +13,7 @@ export default function CatalogPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const page = parseInt(searchParams.get('page') || '0');
-  const search = searchParams.get('search') || '';
+  const search = searchParams.get('q') || '';
   const brandId = searchParams.get('brandId') || '';
   const categoryId = searchParams.get('categoryId') || '';
   const sort = searchParams.get('sort') || '';
@@ -39,7 +39,7 @@ export default function CatalogPage() {
   useEffect(() => {
     setLoading(true);
     const params = { page, size: 12 };
-    if (search) params.search = search;
+    if (search) params.q = search;
     if (brandId) params.brandId = brandId;
     if (categoryId) params.categoryId = categoryId;
     if (sort) params.sort = sort;
@@ -69,19 +69,23 @@ export default function CatalogPage() {
               type="text"
               placeholder="Search watches..."
               defaultValue={search}
-              onKeyDown={(e) => e.key === 'Enter' && updateParam('search', e.target.value)}
+              key={search}
+              aria-label="Search watches"
+              onKeyDown={(e) => e.key === 'Enter' && updateParam('q', e.target.value.trim())}
               className="w-full pl-12 pr-4 py-3 border border-gray-200 focus:border-gold focus:outline-none text-sm"
             />
           </div>
           <select
             value={sort}
+            aria-label="Sort products"
             onChange={(e) => updateParam('sort', e.target.value)}
             className="px-4 py-3 border border-gray-200 text-sm focus:outline-none focus:border-gold bg-white"
           >
             <option value="">Sort by</option>
-            <option value="price,asc">Price: Low to High</option>
-            <option value="price,desc">Price: High to Low</option>
-            <option value="createdAt,desc">Newest First</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="newest">Newest First</option>
+            <option value="name">Name</option>
           </select>
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -94,7 +98,7 @@ export default function CatalogPage() {
         <div className="flex gap-10">
           {/* Sidebar Filters */}
           <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-64 shrink-0`}>
-            {(brandId || categoryId) && (
+            {(brandId || categoryId || search) && (
               <button
                 onClick={() => setSearchParams({})}
                 className="flex items-center gap-1 text-sm text-gold mb-4 hover:underline"
@@ -149,7 +153,7 @@ export default function CatalogPage() {
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                   {products.map((p) => (
-                    <Link key={p.id} to={`/product/${p.id}`} className="group block">
+                    <Link key={p.id} to={`/product/${p.id}`} className="group block" data-testid="product-card">
                       <div className="aspect-square bg-cream overflow-hidden mb-3">
                         <img
                           src={p.imageUrl || 'https://placehold.co/600x600/1a1a2e/c9a94e?text=Watch'}

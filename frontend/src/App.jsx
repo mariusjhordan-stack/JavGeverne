@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -14,7 +14,8 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const OrdersPage = lazy(() => import('./pages/OrdersPage'));
 const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage'));
-const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage'));
+const CheckoutResultPage = lazy(() => import('./pages/CheckoutResultPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 function Loading() {
@@ -26,6 +27,11 @@ function Loading() {
       </div>
     </div>
   );
+}
+
+function LegacyConfirmation() {
+  const { id } = useParams();
+  return <Navigate to={`/orders/${id}`} replace />;
 }
 
 export default function App() {
@@ -58,13 +64,15 @@ export default function App() {
             element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>}
           />
           <Route
-            path="/order-confirmation/:id"
-            element={<ProtectedRoute><OrderConfirmationPage /></ProtectedRoute>}
+            path="/checkout/:outcome"
+            element={<ProtectedRoute><CheckoutResultPage /></ProtectedRoute>}
           />
+          <Route path="/order-confirmation/:id" element={<LegacyConfirmation />} />
           <Route
             path="/admin"
             element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>}
           />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </Suspense>

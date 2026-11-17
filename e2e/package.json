@@ -1,0 +1,12 @@
+{
+  "name": "cronos-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "stub": "node mp-stub/server.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

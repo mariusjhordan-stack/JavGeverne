@@ -1,82 +1,65 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authApi from '../api/auth';
+import { tokens } from '../api/client';
 
 const AuthContext = createContext(null);
 
+const readUser = () => {
+  try {
+    return tokens.access ? JSON.parse(localStorage.getItem('user')) : null;
+  } catch {
+    return null;
+  }
+};
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
-  });
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(readUser);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('user');
-    }
-  }, [user]);
-
-  const login = useCallback(async (email, password) => {
-    setLoading(true);
-    try {
-      const data = await authApi.login(email, password);
-      localStorage.setItem('token', data.token);
-      if (data.refreshToken) {
-        localStorage.setItem('refreshToken', data.refreshToken);
-      }
-      const userData = {
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        role: data.role,
-      };
-      setUser(userData);
-      return userData;
-    } finally {
-      setLoading(false);
-    }
+    const onExpired = () => { setUser(null); setSessionExpired(true); };
+    window.addEventListener('session-expired', onExpired);
+    return () => window.removeEventListener('session-expired', onExpired);
   }, []);
 
-  const register = useCallback(async (data) => {
-    setLoading(true);
-    try {
-      const res = await authApi.register(data);
-      localStorage.setItem('token', res.token);
-      if (res.refreshToken) {
-        localStorage.setItem('refreshToken', res.refreshToken);
-      }
-      const userData = {
-        email: res.email,
-        firstName: res.firstName,
-        lastName: res.lastName,
-        role: res.role,
-      };
-      setUser(userData);
-      return userData;
-    } finally {
-      setLoading(false);
-    }
+  const startSession = useCallback((data) => {
+    tokens.set(data);
+    const next = { email: data.email, firstName: data.firstName, lastName: data.lastName, role: data.role };
+    localStorage.setItem('user', JSON.stringify(next));
+    setUser(next);
+    setSessionExpired(false);
+    return next;
   }, []);
+
+  const login = useCallback(async (email, password) => startSession(await authApi.login(email, password)), [startSession]);
+  const register = useCallback(async (payload) => startSession(await authApi.register(payload)), [startSession]);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    const refreshToken = tokens.refresh;
+    if (refreshToken) authApi.logout(refreshToken).catch(() => {});
+    tokens.clear();
     setUser(null);
   }, []);
 
-  const isAuthenticated = !!user;
-  const isAdmin = user?.role === 'ADMIN';
+  const updateUser = useCallback((patch) => {
+    setUser((prev) => {
+      const next = { ...prev, ...patch };
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, isAuthenticated, isAdmin }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user, login, register, logout, updateUser, sessionExpired,
+    clearSessionExpired: () => setSessionExpired(false),
+    isAuthenticated: !!user,
+    // Only decides what the interface shows; every admin request is authorised again on the server.
+    isAdmin: user?.role === 'ADMIN',
+  };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');

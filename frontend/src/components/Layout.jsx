@@ -1,15 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { ShoppingBag, User, Menu, X, Watch, LogOut, Package, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
 function Navbar() {
-  const { isAuthenticated, isAdmin, user, logout } = useAuth();
+  const { isAuthenticated, isAdmin, user, logout, sessionExpired } = useAuth();
   const { totalItems } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (sessionExpired) navigate('/login');
+  }, [sessionExpired, navigate]);
 
   const handleLogout = () => {
     logout();
@@ -49,7 +53,7 @@ function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-4">
-            <Link to="/cart" className="relative text-gray-300 hover:text-[#c9a94e] transition-colors">
+            <Link to="/cart" aria-label="Shopping bag" className="relative text-gray-300 hover:text-[#c9a94e] transition-colors">
               <ShoppingBag className="w-5 h-5" />
               {totalItems > 0 && (
                 <span className="absolute -top-2 -right-2 bg-[#c9a94e] text-[#1a1a2e] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
@@ -61,6 +65,7 @@ function Navbar() {
             {isAuthenticated ? (
               <div className="relative">
                 <button
+                  aria-label="Account menu"
                   onClick={() => setProfileOpen(!profileOpen)}
                   className="flex items-center gap-2 text-gray-300 hover:text-[#c9a94e] transition-colors"
                 >
@@ -121,6 +126,7 @@ function Navbar() {
 
             {/* Mobile menu toggle */}
             <button
+              aria-label="Menu"
               className="md:hidden text-gray-300"
               onClick={() => setMenuOpen(!menuOpen)}
             >

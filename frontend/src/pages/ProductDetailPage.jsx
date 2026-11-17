@@ -4,10 +4,13 @@ import { ArrowLeft, Plus, Minus, ShoppingBag, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getProductById, getProducts } from '../api/catalog';
 import { useCart } from '../context/CartContext';
+import { useCompare } from '../context/CompareContext';
+import { withUnit } from '../lib/format';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const { addItem } = useCart();
+  const compare = useCompare();
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +54,7 @@ export default function ProductDetailPage() {
 
   const specs = [
     ['Case Material', product.caseMaterial],
-    ['Case Diameter', product.caseDiameter ? `${product.caseDiameter} mm` : null],
+    ['Case Diameter', withUnit(product.caseDiameter, 'mm')],
     ['Movement', product.movementType],
     ['Water Resistance', product.waterResistance],
     ['Crystal', product.crystalType],
@@ -67,18 +70,10 @@ export default function ProductDetailPage() {
   };
 
   const handleCompare = () => {
-    const stored = JSON.parse(localStorage.getItem('compare') || '[]');
-    if (stored.find((x) => x.id === product.id)) {
-      toast.info('Already in comparison');
-      return;
-    }
-    if (stored.length >= 3) {
-      toast.error('Maximum 3 watches to compare');
-      return;
-    }
-    stored.push(product);
-    localStorage.setItem('compare', JSON.stringify(stored));
-    toast.success('Added to comparison');
+    const result = compare.add(product.id);
+    if (result === 'exists') toast.info('Already in comparison');
+    else if (result === 'full') toast.error('You can compare up to 3 watches');
+    else toast.success('Added to comparison');
   };
 
   return (

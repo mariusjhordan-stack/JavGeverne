@@ -1,13 +1,8 @@
 import client from './client';
 
-export const login = (email, password) =>
-  client.post('/api/auth/login', { email, password }).then((r) => r.data);
+const data = (r) => r.data;
 
-export const register = (data) =>
-  client.post('/api/auth/register', data).then((r) => r.data);
-
-export const getProfile = () =>
-  client.get('/api/auth/profile').then((r) => r.data);
-
-export const refreshToken = (refreshToken) =>
-  client.post('/api/auth/refresh', { refreshToken }).then((r) => r.data);
+export const login = (email, password) => client.post('/api/auth/login', { email, password }).then(data);
+export const register = (payload) => client.post('/api/auth/register', payload).then(data);
+export const getProfile = () => client.get('/api/auth/profile').then(data);
+export const logout = (refreshToken) => client.post('/api/auth/logout', { refreshToken }).then(data);

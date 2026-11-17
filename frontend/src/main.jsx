@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { CompareProvider } from './context/CompareContext';
 import App from './App';
 import './index.css';
 
@@ -12,7 +13,9 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <CartProvider>
-          <App />
+          <CompareProvider>
+            <App />
+          </CompareProvider>
           <Toaster
             position="top-right"
             toastOptions={{

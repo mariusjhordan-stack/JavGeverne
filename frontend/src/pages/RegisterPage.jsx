@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import { errorMessage } from '../api/client';
 
 export default function RegisterPage() {
   const { register, isAuthenticated } = useAuth();
@@ -11,10 +12,9 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  if (isAuthenticated) {
-    navigate('/', { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated) navigate('/', { replace: true });
+  }, [isAuthenticated, navigate]);
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
@@ -25,17 +25,16 @@ export default function RegisterPage() {
       setError('Passwords do not match');
       return;
     }
-    if (form.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
     setLoading(true);
     try {
       await register({ firstName: form.firstName, lastName: form.lastName, email: form.email, password: form.password });
       toast.success('Account created successfully');
-      navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(errorMessage(err, 'Registration failed'));
     } finally {
       setLoading(false);
     }
@@ -43,8 +42,9 @@ export default function RegisterPage() {
 
   const field = (label, key, type = 'text', placeholder = '') => (
     <div>
-      <label className="block text-sm text-gray-600 mb-1">{label}</label>
+      <label htmlFor={`register-${key}`} className="block text-sm text-gray-600 mb-1">{label}</label>
       <input
+        id={`register-${key}`}
         type={type}
         value={form[key]}
         onChange={set(key)}
@@ -65,7 +65,7 @@ export default function RegisterPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 mb-6">{error}</div>
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 mb-6" role="alert">{error}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -74,7 +74,7 @@ export default function RegisterPage() {
             {field('Last Name', 'lastName', 'text', 'Doe')}
           </div>
           {field('Email', 'email', 'email', 'your@email.com')}
-          {field('Password', 'password', 'password', 'Min 6 characters')}
+          {field('Password', 'password', 'password', 'At least 8 characters')}
           {field('Confirm Password', 'confirmPassword', 'password', 'Repeat password')}
           <button
             type="submit"

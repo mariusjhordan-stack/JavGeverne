@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Loader2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import { errorMessage } from '../api/client';
 
 export default function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, sessionExpired, clearSessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -15,10 +16,9 @@ export default function LoginPage() {
 
   const from = location.state?.from?.pathname || '/';
 
-  if (isAuthenticated) {
-    navigate(from, { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated) navigate(from, { replace: true });
+  }, [isAuthenticated, from, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,10 +26,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
+      clearSessionExpired();
       toast.success('Welcome back');
-      navigate(from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password');
+      setError(errorMessage(err, 'Invalid email or password'));
     } finally {
       setLoading(false);
     }
@@ -44,14 +44,21 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">Sign in to your Cronos Geneve account</p>
         </div>
 
+        {sessionExpired && !error && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 mb-6" role="status">
+            Your session expired. Please sign in again.
+          </div>
+        )}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 mb-6">{error}</div>
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 mb-6" role="alert">{error}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Email</label>
+            <label htmlFor="login-email" className="block text-sm text-gray-600 mb-1">Email</label>
             <input
+              id="login-email"
+              autoComplete="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -61,8 +68,10 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Password</label>
+            <label htmlFor="login-password" className="block text-sm text-gray-600 mb-1">Password</label>
             <input
+              id="login-password"
+              autoComplete="current-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -85,6 +94,7 @@ export default function LoginPage() {
           <Link to="/register" className="text-gold hover:underline">Create one</Link>
         </p>
 
+        {import.meta.env.DEV && (
         <div className="border-t border-gray-100 mt-8 pt-6">
           <p className="text-xs text-gray-400 text-center mb-2">Demo accounts</p>
           <div className="grid grid-cols-2 gap-3 text-xs">
@@ -104,6 +114,7 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
