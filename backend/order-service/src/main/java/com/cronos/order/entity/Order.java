@@ -1,6 +1,7 @@
 package com.cronos.order.entity;
 
 import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,8 +13,10 @@ import java.util.UUID;
 public class Order {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Version
+    private Long version;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
@@ -22,7 +25,7 @@ public class Order {
     private String userEmail;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private OrderStatus status = OrderStatus.PENDING;
 
     @Column(nullable = false, precision = 12, scale = 2)
@@ -35,7 +38,7 @@ public class Order {
     private BigDecimal total;
 
     @Column(nullable = false, length = 3)
-    private String currency = "USD";
+    private String currency;
 
     @Column(name = "shipping_address", columnDefinition = "TEXT")
     private String shippingAddress;
@@ -43,13 +46,26 @@ public class Order {
     @Column(name = "payment_id")
     private String paymentId;
 
-    @Column(name = "payment_status")
+    @Column(name = "payment_status", length = 50)
     private String paymentStatus;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "cancel_reason", length = 100)
+    private String cancelReason;
+
+    @Column(name = "stock_release_pending", nullable = false)
+    private boolean stockReleasePending;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OrderBy("createdAt ASC")
     private List<OrderItem> items = new ArrayList<>();
 
     @Column(name = "created_at")
@@ -58,10 +74,18 @@ public class Order {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    protected Order() {}
+
+    public Order(UUID id, UUID userId, String userEmail) {
+        this.id = id;
+        this.userId = userId;
+        this.userEmail = userEmail;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        updatedAt = createdAt;
     }
 
     @PreUpdate
@@ -74,50 +98,36 @@ public class Order {
         item.setOrder(this);
     }
 
-    // Getters and setters
-
     public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-
     public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
-
     public String getUserEmail() { return userEmail; }
-    public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
-
     public OrderStatus getStatus() { return status; }
     public void setStatus(OrderStatus status) { this.status = status; }
-
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
-
     public BigDecimal getTax() { return tax; }
     public void setTax(BigDecimal tax) { this.tax = tax; }
-
     public BigDecimal getTotal() { return total; }
     public void setTotal(BigDecimal total) { this.total = total; }
-
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
-
     public String getShippingAddress() { return shippingAddress; }
     public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
-
     public String getPaymentId() { return paymentId; }
     public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
-
     public String getPaymentStatus() { return paymentStatus; }
     public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
-
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
-
+    public String getCancelReason() { return cancelReason; }
+    public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
+    public boolean isStockReleasePending() { return stockReleasePending; }
+    public void setStockReleasePending(boolean stockReleasePending) { this.stockReleasePending = stockReleasePending; }
+    public LocalDateTime getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
+    public LocalDateTime getPaidAt() { return paidAt; }
+    public void setPaidAt(LocalDateTime paidAt) { this.paidAt = paidAt; }
     public List<OrderItem> getItems() { return items; }
-    public void setItems(List<OrderItem> items) { this.items = items; }
-
     public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
     public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

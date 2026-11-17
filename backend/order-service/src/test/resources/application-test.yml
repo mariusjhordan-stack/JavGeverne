@@ -7,12 +7,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
   flyway:
     enabled: false
 
 app:
-  catalog-service-url: http://localhost:9999
+  security:
+    internal-token: test-internal-token-0123456789abcdef0123
+  orders:
+    expiry-job-enabled: false
