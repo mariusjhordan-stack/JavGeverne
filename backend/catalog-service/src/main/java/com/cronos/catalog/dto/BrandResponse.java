@@ -1,12 +1,12 @@
 package com.cronos.catalog.dto;
 
-import java.time.LocalDateTime;
-
 public record BrandResponse(
     Long id,
     String name,
+    String slug,
     String description,
-    String logoUrl,
+    String story,
+    String imageUrl,
     String country,
-    LocalDateTime createdAt
+    long productCount
 ) {}

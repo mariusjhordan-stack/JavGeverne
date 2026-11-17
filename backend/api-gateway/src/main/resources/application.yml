@@ -6,46 +6,54 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 20s
       routes:
         - id: auth-service
           uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
           predicates:
-            - Path=/api/auth/**
-        - id: catalog-products
+            - Path=/api/auth/**,/api/admin/users/**
+        - id: catalog-service
           uri: ${CATALOG_SERVICE_URL:http://catalog-service:8082}
           predicates:
-            - Path=/api/products/**
-        - id: catalog-categories
-          uri: ${CATALOG_SERVICE_URL:http://catalog-service:8082}
-          predicates:
-            - Path=/api/categories/**
-        - id: catalog-brands
-          uri: ${CATALOG_SERVICE_URL:http://catalog-service:8082}
-          predicates:
-            - Path=/api/brands/**
+            - Path=/api/products/**,/api/brands/**,/api/categories/**,/api/favorites/**,/api/admin/products/**,/api/admin/inventory/**,/api/admin/reviews/**
         - id: order-service
           uri: ${ORDER_SERVICE_URL:http://order-service:8083}
           predicates:
-            - Path=/api/orders/**
+            - Path=/api/orders/**,/api/admin/orders/**
         - id: payment-service
           uri: ${PAYMENT_SERVICE_URL:http://payment-service:8084}
           predicates:
-            - Path=/api/payments/**
+            - Path=/api/payments/**,/api/admin/payments/**
         - id: notification-service
           uri: ${NOTIFICATION_SERVICE_URL:http://notification-service:8085}
           predicates:
-            - Path=/api/notifications/**
+            - Path=/api/notifications/**,/api/admin/notifications/**
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        - SecureHeaders
+
+app:
+  security:
+    # Both are mandatory and have no default: the gateway refuses to start without them.
+    jwt-secret: ${JWT_SECRET}
+    internal-token: ${INTERNAL_API_TOKEN}
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+  rate-limit:
+    auth-requests-per-minute: ${AUTH_RATE_LIMIT_PER_MINUTE:20}
+    # Number of reverse proxies in front of the gateway that append to X-Forwarded-For (0 = use the socket address).
+    trusted-proxy-count: ${TRUSTED_PROXY_COUNT:0}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health
   endpoint:
     health:
-      show-details: always
+      show-details: never
 
 logging:
   level:

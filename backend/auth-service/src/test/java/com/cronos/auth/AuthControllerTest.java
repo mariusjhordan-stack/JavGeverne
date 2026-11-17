@@ -182,7 +182,7 @@ class AuthControllerTest {
     @Order(8)
     void accessProtectedEndpointWithoutToken() throws Exception {
         mockMvc.perform(get("/api/auth/profile"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -203,7 +203,7 @@ class AuthControllerTest {
     void accessProtectedEndpointWithInvalidToken() throws Exception {
         mockMvc.perform(get("/api/auth/profile")
                         .header("Authorization", "Bearer invalid.token.here"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -220,7 +220,7 @@ class AuthControllerTest {
     @Order(12)
     void validateTokenWithMissingHeader() throws Exception {
         mockMvc.perform(get("/api/auth/validate"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -291,5 +291,75 @@ class AuthControllerTest {
     void actuatorHealthIsPublic() throws Exception {
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk());
+    }
+
+    @Autowired
+    private com.cronos.auth.repository.UserRepository userRepository;
+
+    @Autowired
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    private String loginToken(String email, String password) throws Exception {
+        String response = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response).get("token").asText();
+    }
+
+    @Test
+    @Order(30)
+    void validationErrorsReturn400WithMessage() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"short@cronos.com\",\"password\":\"abc123\",\"firstName\":\"A\",\"lastName\":\"B\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION"))
+                .andExpect(jsonPath("$.fields.password").exists());
+    }
+
+    @Test
+    @Order(31)
+    void registrationCannotGrantAdminRole() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"sneaky@cronos.com\",\"password\":\"TestPass123!\",\"firstName\":\"A\",\"lastName\":\"B\",\"role\":\"ADMIN\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("USER"));
+    }
+
+    @Test
+    @Order(32)
+    void normalUserCannotListUsers() throws Exception {
+        mockMvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/admin/users"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @Order(33)
+    void adminCanListUsers() throws Exception {
+        userRepository.save(new com.cronos.auth.entity.User("boss@cronos.com", passwordEncoder.encode("BossPass123!"),
+                "Boss", "Admin", com.cronos.auth.entity.Role.ADMIN));
+        String adminToken = loginToken("boss@cronos.com", "BossPass123!");
+        mockMvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.email == 'boss@cronos.com')].role").value("ADMIN"))
+                .andExpect(jsonPath("$.content[0].passwordHash").doesNotExist());
+    }
+
+    @Test
+    @Order(34)
+    void tokensAreSignedWithHs512() {
+        String header = new String(java.util.Base64.getUrlDecoder().decode(accessToken.split("\\.")[0]));
+        org.junit.jupiter.api.Assertions.assertTrue(header.contains("HS512"), header);
+    }
+
+    @Test
+    @Order(35)
+    void unknownPathsAreDenied() throws Exception {
+        mockMvc.perform(get("/h2-console").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden());
     }
 }

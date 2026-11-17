@@ -2,6 +2,7 @@ package com.cronos.catalog.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record ProductResponse(
@@ -11,8 +12,10 @@ public record ProductResponse(
     String referenceNumber,
     Long brandId,
     String brandName,
+    String brandSlug,
     Long categoryId,
     String categoryName,
+    String categorySlug,
     BigDecimal price,
     String currency,
     Integer stock,
@@ -25,7 +28,7 @@ public record ProductResponse(
     String strapMaterial,
     String powerReserve,
     String imageUrl,
-    String galleryUrls,
+    List<String> gallery,
     Boolean featured,
     Boolean active,
     LocalDateTime createdAt,

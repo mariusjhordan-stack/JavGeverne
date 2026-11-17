@@ -1,7 +1,7 @@
-INSERT INTO brands (id, name, description, logo_url, country, created_at) VALUES
-(1, 'Rolex', 'Swiss watchmaker', 'https://example.com/rolex.png', 'Switzerland', CURRENT_TIMESTAMP),
-(2, 'Omega', 'Precision timing', 'https://example.com/omega.png', 'Switzerland', CURRENT_TIMESTAMP),
-(3, 'TAG Heuer', 'Avant-garde', 'https://example.com/tag.png', 'Switzerland', CURRENT_TIMESTAMP);
+INSERT INTO brands (id, name, slug, description, logo_url, country, created_at) VALUES
+(1, 'Rolex', 'rolex', 'Swiss watchmaker', 'https://example.com/rolex.png', 'Switzerland', CURRENT_TIMESTAMP),
+(2, 'Omega', 'omega', 'Precision timing', 'https://example.com/omega.png', 'Switzerland', CURRENT_TIMESTAMP),
+(3, 'TAG Heuer', 'tag-heuer', 'Avant-garde', 'https://example.com/tag.png', 'Switzerland', CURRENT_TIMESTAMP);
 
 INSERT INTO categories (id, name, description, slug, created_at) VALUES
 (1, 'Sport', 'Sport watches', 'sport', CURRENT_TIMESTAMP),
@@ -16,3 +16,6 @@ INSERT INTO products (id, name, description, reference_number, brand_id, categor
 ('a1b2c3d4-0004-4000-8000-000000000004', 'Seamaster 300M', 'Diver watch', '210.30', 2, 3, 5550.00, 'USD', 10, 'Steel', '42mm', 'AUTOMATIC', '300m', 'Sapphire', 'Blue', 'Steel Bracelet', '55h', 'https://example.com/sea.png', false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('a1b2c3d4-0005-4000-8000-000000000005', 'Carrera Chronograph', 'Racing heritage', 'CBS2210', 3, 4, 5650.00, 'USD', 9, 'Steel', '42mm', 'AUTOMATIC', '100m', 'Sapphire', 'Blue', 'Steel Bracelet', '80h', 'https://example.com/carrera.png', false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('a1b2c3d4-0006-4000-8000-000000000006', 'Inactive Watch', 'Not shown', 'INACTIVE1', 3, 1, 1000.00, 'USD', 0, 'Plastic', '30mm', 'QUARTZ', '30m', 'Mineral', 'White', 'Rubber', 'N/A', 'https://example.com/inactive.png', false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+ALTER TABLE brands ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE categories ALTER COLUMN id RESTART WITH 100;

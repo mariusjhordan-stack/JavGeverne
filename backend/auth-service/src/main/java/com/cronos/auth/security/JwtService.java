@@ -23,7 +23,11 @@ public class JwtService {
             @Value("${app.jwt.secret}") String secret,
             @Value("${app.jwt.expiration}") long accessExpiration,
             @Value("${app.jwt.refresh-expiration}") long refreshExpiration) {
-        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        byte[] keyBytes = secret == null ? new byte[0] : secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 64) {
+            throw new IllegalStateException("JWT_SECRET must be set and at least 64 bytes long (HS512)");
+        }
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
         this.accessExpiration = accessExpiration;
         this.refreshExpiration = refreshExpiration;
     }
@@ -43,7 +47,7 @@ public class JwtService {
                 .claims(claims)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expiration))
-                .signWith(signingKey)
+                .signWith(signingKey, Jwts.SIG.HS512)
                 .compact();
     }
 

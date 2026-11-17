@@ -6,63 +6,47 @@ spring:
     name: auth-service
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${AUTH_DB_NAME:auth_db}
-    username: ${POSTGRES_USER:cronos}
-    password: ${POSTGRES_PASSWORD:cronos_secret_2024}
-    driver-class-name: org.postgresql.Driver
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+    open-in-view: false
   flyway:
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: true
 
 app:
   jwt:
-    secret: ${JWT_SECRET:c2VjdXJlLWp3dC1zZWNyZXQta2V5LWZvci1jcm9ub3MtZ2VuZXZlLWRldi1lbnYtMjAyNA==}
-    expiration: ${JWT_EXPIRATION:3600000}
-    refresh-expiration: ${JWT_REFRESH_EXPIRATION:86400000}
+    # Mandatory, no default. Shared with the API gateway, which verifies the signature (HS512).
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION:900000}
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+  admin:
+    # Optional: creates this administrator on startup if it does not exist yet.
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: never
+
+server.error.include-message: never
 
 logging:
   level:
     com.cronos.auth: INFO
-    org.springframework.security: WARN
 
 ---
 spring:
   config:
     activate:
       on-profile: dev
-  jpa:
-    show-sql: true
-
 logging:
   level:
     com.cronos.auth: DEBUG
-
----
-spring:
-  config:
-    activate:
-      on-profile: prod
-  jpa:
-    show-sql: false
-
-logging:
-  level:
-    com.cronos.auth: WARN
-    org.springframework.security: WARN

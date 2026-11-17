@@ -2,7 +2,6 @@ package com.cronos.catalog.controller;
 
 import com.cronos.catalog.dto.BrandResponse;
 import com.cronos.catalog.service.CatalogService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,12 +17,12 @@ public class BrandController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BrandResponse>> getAllBrands() {
-        return ResponseEntity.ok(catalogService.getAllBrands());
+    public List<BrandResponse> list() {
+        return catalogService.getBrands();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<BrandResponse> getBrandById(@PathVariable Long id) {
-        return ResponseEntity.ok(catalogService.getBrandById(id));
+    @GetMapping("/{idOrSlug}")
+    public BrandResponse get(@PathVariable String idOrSlug) {
+        return catalogService.getBrand(idOrSlug);
     }
 }
