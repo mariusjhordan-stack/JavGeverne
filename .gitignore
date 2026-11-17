@@ -45,3 +45,6 @@ logs/
 *.pem
 *.key
 .env.production
+
+# Local runtime (scripts/dev-stack.sh)
+.run/
