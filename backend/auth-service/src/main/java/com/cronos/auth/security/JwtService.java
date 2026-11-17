@@ -36,8 +36,16 @@ public class JwtService {
         return buildToken(email, Map.of("role", role, "userId", userId, "type", "access"), accessExpiration);
     }
 
-    public String generateRefreshToken(String email) {
-        return buildToken(email, Map.of("type", "refresh"), refreshExpiration);
+    public String generateRefreshToken(String email, String tokenId) {
+        return buildToken(email, Map.of("type", "refresh", "jti", tokenId), refreshExpiration);
+    }
+
+    public String extractTokenId(String token) {
+        return extractClaims(token).get("jti", String.class);
+    }
+
+    public long getRefreshExpirationMillis() {
+        return refreshExpiration;
     }
 
     private String buildToken(String subject, Map<String, ?> claims, long expiration) {

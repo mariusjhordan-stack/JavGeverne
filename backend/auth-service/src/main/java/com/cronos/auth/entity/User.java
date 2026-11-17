@@ -31,6 +31,9 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(length = 40)
+    private String phone;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -70,6 +73,8 @@ public class User {
     public void setLastName(String lastName) { this.lastName = lastName; }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }

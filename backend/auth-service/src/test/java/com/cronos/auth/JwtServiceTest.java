@@ -38,7 +38,7 @@ class JwtServiceTest {
 
     @Test
     void generateRefreshToken() {
-        String token = jwtService.generateRefreshToken("user@test.com");
+        String token = jwtService.generateRefreshToken("user@test.com", java.util.UUID.randomUUID().toString());
 
         assertNotNull(token);
         assertFalse(token.isBlank());
@@ -54,7 +54,7 @@ class JwtServiceTest {
 
     @Test
     void extractEmailFromRefreshToken() {
-        String token = jwtService.generateRefreshToken("bob@test.com");
+        String token = jwtService.generateRefreshToken("bob@test.com", java.util.UUID.randomUUID().toString());
 
         assertEquals("bob@test.com", jwtService.extractEmail(token));
     }
@@ -85,7 +85,7 @@ class JwtServiceTest {
 
     @Test
     void refreshTokenTypeIsRefresh() {
-        String token = jwtService.generateRefreshToken("u@t.com");
+        String token = jwtService.generateRefreshToken("u@t.com", java.util.UUID.randomUUID().toString());
 
         assertTrue(jwtService.isRefreshToken(token));
         assertFalse(jwtService.isAccessToken(token));
@@ -130,7 +130,7 @@ class JwtServiceTest {
 
     @Test
     void refreshTokenHasNoRole() {
-        String token = jwtService.generateRefreshToken("u@t.com");
+        String token = jwtService.generateRefreshToken("u@t.com", java.util.UUID.randomUUID().toString());
 
         assertNull(jwtService.extractRole(token));
     }
