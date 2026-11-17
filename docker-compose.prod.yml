@@ -1,0 +1,57 @@
+# Production overlay:  docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d --build
+# Publishes only Caddy (80/443). PostgreSQL, the gateway and every service stay on the private network.
+services:
+  postgres:
+    ports: !reset []
+  api-gateway:
+    ports: !reset []
+    environment:
+      TRUSTED_PROXY_COUNT: 2
+  frontend:
+    ports: !reset []
+  auth-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+  catalog-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+  order-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+  payment-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+  notification-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: { frontend: { condition: service_started } }
+    mem_limit: 128m
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./infrastructure/backup/backup.sh:/backup.sh:ro
+      - ./backups:/backups
+    depends_on: { postgres: { condition: service_healthy } }
+    mem_limit: 128m
+volumes:
+  caddy_data:
+  caddy_config:

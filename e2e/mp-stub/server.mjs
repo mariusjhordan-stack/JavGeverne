@@ -8,7 +8,8 @@ const PORT = Number(process.env.MP_STUB_PORT || 9099);
 const WEBHOOK_SECRET = process.env.MERCADOPAGO_WEBHOOK_SECRET || 'e2e-webhook-secret';
 const preferences = new Map();
 const payments = new Map();
-let nextPayment = 900000001;
+// Unique per run: the services keep provider events in PostgreSQL, so ids must never repeat across stub restarts.
+let nextPayment = Date.now() * 100;
 
 const readBody = (req) => new Promise((resolve) => {
   const chunks = [];

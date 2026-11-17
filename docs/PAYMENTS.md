@@ -1,192 +1,46 @@
-# Mercado Pago Integration
+# Payments (Mercado Pago Checkout Pro)
 
-## Overview
+## Flow
 
-Cronos Geneve integrates with Mercado Pago Checkout Pro for payment processing. The integration uses the Sandbox/Test environment for development and demonstration.
+1. The customer places an order (`POST /api/orders`): the catalogue reserves stock and returns official prices; the order is `PENDING`.
+2. `POST /api/payments/preference {orderId}`: payment-service reads **amount, currency and items from the order service**, checks the caller owns it,
+   creates a preference with `external_reference = orderId`, `notification_url`, return URLs and an expiry equal to the stock reservation, and returns the checkout URL.
+3. The browser goes to Mercado Pago, pays, and returns to `/checkout/{success|failure|pending}?order=…`. **That page believes nothing in the URL**: it calls
+   `POST /api/payments/order/{id}/sync` (the server asks Mercado Pago) and shows the order's real status.
+4. Mercado Pago calls `POST /api/payments/webhook?data.id=…&type=payment` with `x-signature` and `x-request-id`.
+   payment-service verifies the HMAC, **fetches the payment from Mercado Pago**, and checks reference, amount and currency against the stored checkout.
+5. Each distinct provider state is recorded once (`payment_events`, unique on payment id + status) and reported to order-service, which moves the order:
+   approved → `PAID` (stock confirmed, customer notified); rejected/cancelled → `PAYMENT_FAILED` (stock stays reserved for a retry); in process → `PAYMENT_PENDING`;
+   refunded → `REFUNDED` (stock released). If order-service does not acknowledge, nothing is stored and the provider's retry (or the 5-minute reconciliation job) repeats it.
+6. Unpaid orders are cancelled after `ORDER_RESERVATION_TTL_MINUTES` and their stock released.
 
-## Architecture
+## Configuration (payment-service environment)
 
-```mermaid
-graph LR
-    FE[Frontend] -->|1. Checkout| OS[Order Service]
-    OS -->|2. Order created| FE
-    FE -->|3. Create preference| PS[Payment Service]
-    PS -->|4. Create preference| MP[Mercado Pago API]
-    MP -->|5. Preference + init_point| PS
-    PS -->|6. Checkout URL| FE
-    FE -->|7. Redirect| MPCheckout[MP Checkout Page]
-    MPCheckout -->|8. User pays| MP
-    MP -->|9. Webhook| PS
-    PS -->|10. Verify payment| MP
-    PS -->|11. Update order| OS
-```
+| Variable | Meaning |
+|---|---|
+| `MERCADOPAGO_ACCESS_TOKEN` | Server-side access token. `TEST-…` selects the sandbox checkout URL. Empty = checkout answers 503. |
+| `MERCADOPAGO_WEBHOOK_SECRET` | "Secret signature" from the Mercado Pago webhooks page. Empty = every webhook is refused. |
+| `FRONTEND_URL` | Public storefront URL; return URLs default to `FRONTEND_URL/checkout/{success,failure,pending}`. |
+| `MP_SUCCESS_URL`, `MP_FAILURE_URL`, `MP_PENDING_URL` | Optional overrides. |
+| `MP_WEBHOOK_URL` | Public HTTPS URL of the webhook, e.g. `https://cronosgeneve.com/api/payments/webhook`. |
+| `MP_WEBHOOK_MAX_AGE_SECONDS` | Accepted age of a signature timestamp (default 900). |
 
-## Payment Flow
+`auto_return` is sent only when the success URL is HTTPS (Mercado Pago rejects it otherwise).
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant FE as Frontend
-    participant OS as Order Service
-    participant PS as Payment Service
-    participant MP as Mercado Pago
+## What is and is not proven
 
-    U->>FE: Click "Place Order"
-    FE->>OS: POST /api/orders
-    OS->>OS: Reserve stock
-    OS-->>FE: Order (status: PENDING)
+| Piece | Status |
+|---|---|
+| Our webhook/HMAC/idempotency/amount logic, state changes, stock, notifications | **Tested** against a stand-in for the API (unit, integration and e2e) |
+| Preference payload and API paths match Mercado Pago's documentation | Reviewed against the documented shape; **not yet accepted by the real API** |
+| Currency: all prices are `USD` | **Unverified.** Mercado Pago accounts accept only their country's currency; if your test account is, e.g., PEN, set the catalogue currency accordingly |
+| Redirect, payment with a test card, real signed webhook, return page | **Not tested with Mercado Pago.** Do the Sandbox test below |
 
-    FE->>PS: POST /api/payments/preference
-    PS->>MP: POST /checkout/preferences
-    MP-->>PS: {id, init_point, sandbox_init_point}
-    PS->>PS: Save payment record (PENDING)
-    PS-->>FE: {preferenceId, sandboxInitPoint}
+## Sandbox test (needs your accounts)
 
-    FE->>U: Redirect to Mercado Pago checkout
-    U->>MP: Complete payment
-
-    Note over MP,PS: Asynchronous webhook
-
-    MP->>PS: POST /api/payments/webhook
-    PS->>PS: Validate HMAC signature
-    PS->>PS: Check idempotency key
-    PS->>MP: GET /v1/payments/{id}
-    MP-->>PS: Payment details
-    PS->>PS: Validate amount & currency
-    PS->>OS: PUT /orders/{id}/status
-    OS-->>PS: Updated
-
-    U->>FE: Return from MP
-    FE->>OS: GET /api/orders/{id}
-    OS-->>FE: Order (status: PAID)
-```
-
-## Preference Creation
-
-When the frontend requests a payment preference, the Payment Service sends a request to Mercado Pago:
-
-```json
-{
-  "items": [
-    {
-      "title": "Rolex Submariner Date",
-      "quantity": 1,
-      "unit_price": 9950.00,
-      "currency_id": "USD"
-    }
-  ],
-  "payer": {
-    "email": "user@example.com"
-  },
-  "back_urls": {
-    "success": "http://localhost:5173/order-confirmation/{orderId}",
-    "failure": "http://localhost:5173/orders/{orderId}",
-    "pending": "http://localhost:5173/orders/{orderId}"
-  },
-  "external_reference": "{orderId}",
-  "auto_return": "approved"
-}
-```
-
-The response includes `init_point` (production) and `sandbox_init_point` (testing) URLs.
-
-## Webhook Processing
-
-### HMAC Signature Validation
-
-Every webhook must include a valid HMAC-SHA256 signature.
-
-**Headers received:**
-```
-x-signature: ts=1694000000,v1=abc123def456...
-x-request-id: unique-request-id
-```
-
-**Validation steps:**
-1. Parse `ts` and `v1` from `x-signature`
-2. Construct the manifest: `id:{data.id};request-id:{x-request-id};ts:{ts};`
-3. Compute HMAC-SHA256 of the manifest using the webhook secret
-4. Compare the hex-encoded result with `v1`
-5. Reject if any step fails
-
-**No bypasses exist.** There is no test mode, no magic values, no skip condition.
-
-### Idempotency
-
-Each webhook is assigned an idempotency key: `webhook:{externalPaymentId}`. If a payment with this key already exists, the webhook is acknowledged without reprocessing.
-
-### Payment Verification
-
-After signature validation, the service queries Mercado Pago directly:
-
-```
-GET https://api.mercadopago.com/v1/payments/{id}
-Authorization: Bearer {access_token}
-```
-
-The response is validated:
-- **Amount** must match the payment record
-- **Currency** must match the payment record
-- **External reference** must correspond to a valid order
-- **Status** determines the outcome (approved, rejected, pending, etc.)
-
-### Status Mapping
-
-| MP Status | Internal Status | Order Status |
-|-----------|----------------|-------------|
-| approved | APPROVED | PAID |
-| rejected | REJECTED | CANCELLED |
-| pending | IN_PROCESS | PAYMENT_PENDING |
-| in_process | IN_PROCESS | PAYMENT_PENDING |
-| cancelled | CANCELLED | CANCELLED |
-| refunded | REFUNDED | REFUNDED |
-
-## Configuration
-
-```yaml
-mercadopago:
-  access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
-  webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:}
-  notification-url: ${MERCADOPAGO_NOTIFICATION_URL:}
-```
-
-If `access-token` is empty, the service starts but logs a warning. Preference creation will fail gracefully with an error message.
-
-## Sandbox Testing
-
-### Test Credentials
-
-1. Create a Mercado Pago developer account at https://www.mercadopago.com/developers
-2. Create a test application
-3. Copy the **Sandbox Access Token** to `MERCADOPAGO_ACCESS_TOKEN`
-4. Set up a webhook secret for `MERCADOPAGO_WEBHOOK_SECRET`
-
-### Test Cards
-
-Mercado Pago provides test card numbers:
-
-| Result | Card Number | CVV | Expiry |
-|--------|-------------|-----|--------|
-| Approved | 5031 7557 3453 0604 | 123 | 11/25 |
-| Rejected | 5031 7557 3453 0604 | 456 | 11/25 |
-| Pending | Use specific test scenarios | - | - |
-
-### Webhook Testing
-
-For local development, use a tunnel service (ngrok, localtunnel) to expose the webhook endpoint:
-
-```bash
-ngrok http 8084
-# Set MERCADOPAGO_NOTIFICATION_URL=https://your-tunnel.ngrok.io/api/payments/webhook
-```
-
-## Error Handling
-
-| Scenario | Response | Action |
-|----------|----------|--------|
-| No MP credentials | 503 Service Unavailable | Log warning |
-| MP API error | 502 Bad Gateway | Return error to client |
-| Invalid webhook signature | 401 Unauthorized | Reject silently |
-| Duplicate webhook | 200 OK | Acknowledge without processing |
-| Amount mismatch | Payment marked REJECTED | Order notified |
-| Payment not found at MP | 404 Not Found | Log error |
+1. In the Mercado Pago developer panel create an application, then two **test users** (seller and buyer).
+2. Copy the seller's **test access token** and, under *Webhooks*, set the URL to your public HTTPS endpoint (use a tunnel such as `cloudflared tunnel --url http://localhost:8080` while developing) and copy the **secret signature**.
+3. Put them in `.env`: `MERCADOPAGO_ACCESS_TOKEN=TEST-…`, `MERCADOPAGO_WEBHOOK_SECRET=…`, `MP_WEBHOOK_URL=https://<tunnel>/api/payments/webhook`, `FRONTEND_URL=https://<tunnel>` (or `http://localhost:5173` for the return trip), then `docker compose up --build`.
+4. Sign in, add a watch to the bag, check out, pay with a Mercado Pago test card as the buyer test user.
+5. Verify: you land on `/checkout/success?order=…` and see "Payment confirmed"; `/admin/payments` shows an `approved` payment with a provider reference; the order is `PAID`; stock dropped by one; a notification exists. Repeat with a card that is rejected (expect `PAYMENT_FAILED` and a retry button).
+6. Only after this passes may the integration be called working.

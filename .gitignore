@@ -48,3 +48,4 @@ logs/
 
 # Local runtime (scripts/dev-stack.sh)
 .run/
+backups/

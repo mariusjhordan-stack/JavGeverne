@@ -1,241 +1,61 @@
-# Cronos Geneve - Swiss Luxury Timepieces
+# Cronos Genève
 
-A premium e-commerce platform for luxury Swiss watches, built with a microservices architecture using Java 21, Spring Boot 3.3, React, and PostgreSQL.
-
-## Architecture
+Academic e-commerce demonstration for Swiss watches: six Spring Boot microservices (Java 21), a React storefront,
+PostgreSQL and Mercado Pago Checkout Pro. It is **not** a real shop and is not affiliated with Rolex, Omega or TAG Heuer.
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
-│   Frontend   │────▶│  API Gateway  │────▶│  Auth Service    │
-│   (React)    │     │  (Port 8080)  │     │  (Port 8081)     │
-│  Port 5173   │     │               │     └─────────────────┘
-└─────────────┘     │               │     ┌─────────────────┐
-                     │               │────▶│ Catalog Service  │
-                     │               │     │  (Port 8082)     │
-                     │               │     └─────────────────┘
-                     │               │     ┌─────────────────┐
-                     │               │────▶│  Order Service   │
-                     │               │     │  (Port 8083)     │
-                     │               │     └─────────────────┘
-                     │               │     ┌─────────────────┐
-                     │               │────▶│ Payment Service  │
-                     │               │     │  (Port 8084)     │
-                     │               │     └─────────────────┘
-                     │               │     ┌─────────────────┐
-                     │               │────▶│Notification Svc  │
-                     └──────────────┘     │  (Port 8085)     │
-                                          └─────────────────┘
-                                                   │
-                                          ┌─────────────────┐
-                                          │   PostgreSQL     │
-                                          │  (Port 5432)     │
-                                          │  5 databases     │
-                                          └─────────────────┘
+Browser ─▶ Storefront (nginx) ─▶ API gateway :8080 ─▶ auth :8081 · catalog :8082 · order :8083 · payment :8084 · notification :8085
+                                       │ verifies the JWT, injects the user, never routes /internal
+                                       └─▶ PostgreSQL (auth_db, catalog_db, order_db, payment_db, notification_db)
+Mercado Pago ──webhook (HMAC)──▶ gateway ─▶ payment ─▶ order ─▶ catalog (stock) ─▶ notification
 ```
 
-## Tech Stack
+Read next: [architecture](docs/ARCHITECTURE.md) · [security](docs/SECURITY.md) · [payments](docs/PAYMENTS.md) ·
+[API](docs/API.md) · [deployment](docs/DEPLOYMENT.md) · [images](docs/IMAGE-SOURCES.md) · [status](docs/PROGRESS.md)
 
-### Backend
-- Java 21
-- Spring Boot 3.3.5
-- Spring Cloud Gateway 2023.0.3
-- Spring Security + JWT (jjwt 0.12.6)
-- Spring Data JPA
-- PostgreSQL 16
-- Flyway migrations
-- Maven
+## Run it locally
 
-### Frontend
-- React 19
-- Vite
-- Tailwind CSS 4
-- React Router
-- Axios
-- Lucide React icons
-- Sonner notifications
-
-### Infrastructure
-- Docker & Docker Compose
-- Nginx (frontend production)
-
-## Prerequisites
-
-- Java 21+
-- Maven 3.9+
-- Node.js 22+
-- Docker & Docker Compose
-- PostgreSQL 16 (or use Docker)
-
-## Quick Start with Docker
+Requirements: Java 21, Maven 3.9, Node 22, and either Docker or a local PostgreSQL 16.
 
 ```bash
-# Clone and enter the project
-cd cronos-geneve-java
-
-# Copy environment variables
-cp .env.example .env
-
-# Start all services
-docker compose up --build
+scripts/gen-env.sh          # creates .env with random secrets (never committed)
+docker compose up --build   # storefront http://localhost:5173, gateway http://localhost:8080
 ```
 
-Access the application:
-- Frontend: http://localhost:5173
-- API Gateway: http://localhost:8080
-- Auth Service: http://localhost:8081
-- Catalog Service: http://localhost:8082
-- Order Service: http://localhost:8083
-- Payment Service: http://localhost:8084
-- Notification Service: http://localhost:8085
-
-## Local Development
-
-### Without Docker (H2 Database)
-
-Run all services using the `local` profile with embedded H2 database (no PostgreSQL needed):
+Without Docker, start PostgreSQL yourself (create the five databases with `infrastructure/database/init-multiple-dbs.sh`), then:
 
 ```bash
-# Start backend services (each in a separate terminal)
-cd backend/auth-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
-cd backend/catalog-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
-cd backend/order-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
-cd backend/payment-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
-cd backend/notification-service && mvn spring-boot:run -Dspring-boot.run.profiles=local
-cd backend/api-gateway && mvn spring-boot:run -Dspring-boot.run.profiles=local
+scripts/dev-stack.sh start --build     # six services on PostgreSQL (dev profile)
+cd frontend && npm ci && npm run dev   # http://localhost:5173
 ```
 
-Demo accounts are created automatically on startup. Seed data (12 watches, 3 brands, 4 categories) is also loaded automatically.
+The `dev` profile also creates two demo accounts (`admin@cronos.com` / `Admin123!`, `user@cronos.com` / `User123!`) and
+shows quick-fill buttons on the login page **in dev builds only**. Production uses `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`
+instead and has no demo users. The catalogue migration seeds 12 sample watches.
 
-### With Docker (PostgreSQL)
+Without Mercado Pago credentials the store works but checkout answers *"online payment is not available"*, and webhooks are refused.
 
-Each service can be run independently. First start PostgreSQL:
+## Tests
 
 ```bash
-docker compose up postgres -d
+for s in api-gateway auth-service catalog-service order-service payment-service notification-service; do (cd backend/$s && mvn -B verify); done
+scripts/e2e.sh --build      # Playwright against the real stack on PostgreSQL (needs a running PostgreSQL and .env)
 ```
 
-Then run any service:
+| Suite | Tests | What it proves |
+|---|---|---|
+| api-gateway | 15 | JWT verification, header stripping, admin routes, `/internal` never routed, rate limit, CORS |
+| auth-service | 41 | register/login/refresh rotation, profile, addresses, admin listing |
+| catalog-service | 14 | search/sort, admin CRUD, atomic reservations, no overselling under concurrency, favourites |
+| order-service | 10 | prices from the catalogue, ownership, state machine, payment results, expiry |
+| payment-service | 13 | webhook signature, amount/currency/reference checks, idempotency, retries, fail-closed |
+| notification-service | 5 | starts with and without SMTP, honest SENT/SKIPPED/FAILED, a real SMTP conversation |
+| e2e (Playwright) | 25 | security and service contracts over HTTP, plus the browser purchase flow |
 
-```bash
-cd backend/auth-service
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
-```
+The e2e suite uses `e2e/mp-stub`, a stand-in for the Mercado Pago API. **It proves our handling of what the provider reports,
+not that Mercado Pago accepts our requests.** The Sandbox procedure is in [docs/PAYMENTS.md](docs/PAYMENTS.md).
 
-### Frontend
+## Repository map
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### Running Tests
-
-```bash
-# Run all tests (76 total)
-cd backend/auth-service && mvn test      # 31 tests
-cd backend/catalog-service && mvn test   # 19 tests
-cd backend/order-service && mvn test     # 14 tests
-cd backend/payment-service && mvn test   # 12 tests
-```
-
-## Demo Accounts
-
-| Role  | Email              | Password   |
-|-------|--------------------|------------|
-| Admin | admin@cronos.com   | Admin123!  |
-| User  | user@cronos.com    | User123!   |
-
-## API Endpoints
-
-### Auth Service (`/api/auth`)
-| Method | Endpoint       | Description        | Auth |
-|--------|----------------|--------------------|------|
-| POST   | /register      | Register new user  | No   |
-| POST   | /login         | Login              | No   |
-| POST   | /refresh       | Refresh token      | No   |
-| GET    | /profile       | Get user profile   | Yes  |
-| GET    | /validate      | Validate JWT token | Yes  |
-
-### Catalog Service (`/api/products`, `/api/brands`, `/api/categories`)
-| Method | Endpoint              | Description          | Auth  |
-|--------|-----------------------|----------------------|-------|
-| GET    | /products             | List products        | No    |
-| GET    | /products/{id}        | Get product          | No    |
-| GET    | /products/featured    | Featured products    | No    |
-| GET    | /products/search      | Search products      | No    |
-| POST   | /products             | Create product       | Admin |
-| PUT    | /products/{id}        | Update product       | Admin |
-| PATCH  | /products/{id}/stock  | Update stock         | Admin |
-| GET    | /brands               | List brands          | No    |
-| GET    | /categories           | List categories      | No    |
-
-### Order Service (`/api/orders`)
-| Method | Endpoint            | Description         | Auth |
-|--------|---------------------|---------------------|------|
-| POST   | /orders             | Create order        | Yes  |
-| GET    | /orders             | List user orders    | Yes  |
-| GET    | /orders/{id}        | Get order           | Yes  |
-| PUT    | /orders/{id}/status | Update status       | Int  |
-| POST   | /orders/{id}/cancel | Cancel order        | Yes  |
-
-### Payment Service (`/api/payments`)
-| Method | Endpoint                | Description            | Auth |
-|--------|-------------------------|------------------------|------|
-| POST   | /payments/preference    | Create MP preference   | Yes  |
-| POST   | /payments/webhook       | MP webhook             | No   |
-| GET    | /payments/order/{id}    | Get payment by order   | Yes  |
-| GET    | /payments/{id}          | Get payment            | Yes  |
-
-## Environment Variables
-
-See `.env.example` for all available configuration options.
-
-Key variables:
-- `JWT_SECRET` - JWT signing key (min 256 bits)
-- `MERCADOPAGO_ACCESS_TOKEN` - Mercado Pago sandbox token
-- `MERCADOPAGO_WEBHOOK_SECRET` - Webhook HMAC secret
-- `POSTGRES_PASSWORD` - Database password
-
-## Testing
-
-```bash
-# Run all tests
-cd backend/auth-service && mvn test
-cd backend/catalog-service && mvn test
-cd backend/order-service && mvn test
-cd backend/payment-service && mvn test
-cd backend/notification-service && mvn test
-```
-
-## Project Structure
-
-```
-cronos-geneve-java/
-├── frontend/                 # React + Vite frontend
-├── backend/
-│   ├── api-gateway/         # Spring Cloud Gateway
-│   ├── auth-service/        # Authentication & authorization
-│   ├── catalog-service/     # Products, brands, categories
-│   ├── order-service/       # Order management
-│   ├── payment-service/     # Mercado Pago integration
-│   └── notification-service/# Email notifications
-├── infrastructure/
-│   ├── docker/              # Docker configs
-│   └── database/            # DB init scripts
-├── docs/                    # Documentation
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
-
-## Documentation
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Microservices](docs/MICROSERVICES.md)
-- [Database](docs/DATABASE.md)
-- [Security](docs/SECURITY.md)
-- [Payments](docs/PAYMENTS.md)
-- [API Reference](docs/API.md)
-- [Deployment](docs/DEPLOYMENT.md)
-- [Progress](docs/PROGRESS.md)
+`backend/<service>` one Maven project each · `frontend` React 19 + Vite + Tailwind 4 · `e2e` Playwright and the provider stub ·
+`infrastructure` database init, Caddy, backups · `scripts` env generation, local stack, e2e runner · `docs`.

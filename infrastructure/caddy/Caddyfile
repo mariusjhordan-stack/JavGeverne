@@ -1,0 +1,18 @@
+# Production reverse proxy. {$DOMAIN} is the public host name, e.g. cronosgeneve.com.
+# Caddy obtains and renews the HTTPS certificate automatically once DNS points here and ports 80/443 are open.
+{$DOMAIN} {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+    # The storefront container proxies /api/ to the gateway; the webhook is reachable at https://{$DOMAIN}/api/payments/webhook
+    reverse_proxy frontend:8080
+}
+
+www.{$DOMAIN} {
+    redir https://{$DOMAIN}{uri} permanent
+}

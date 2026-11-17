@@ -133,7 +133,7 @@ export default function ComparePage() {
                 {ROWS.map(([label, getter]) => (
                   <tr key={label} className="border-b border-gray-100 last:border-0">
                     <th scope="row" className="px-4 py-3 text-left font-normal text-gray-600 text-xs uppercase tracking-wider w-40 bg-gray-50">{label}</th>
-                    {selected.map((p) => <td key={p.id} className="px-4 py-3 text-navy capitalize">{getter(p) || '—'}</td>)}
+                    {selected.map((p) => <td key={p.id} className="px-4 py-3 text-navy first-letter:uppercase">{getter(p) || '—'}</td>)}
                   </tr>
                 ))}
               </tbody>

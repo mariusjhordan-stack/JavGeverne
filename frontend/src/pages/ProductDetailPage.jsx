@@ -150,7 +150,7 @@ export default function ProductDetailPage() {
               {specs.map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-6 py-3.5 border-b hairline text-sm">
                   <dt className="text-charcoal/60">{label}</dt>
-                  <dd className="text-ink text-right capitalize">{value}</dd>
+                  <dd className="text-ink text-right first-letter:uppercase">{value}</dd>
                 </div>
               ))}
             </dl>

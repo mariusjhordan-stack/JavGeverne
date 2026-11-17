@@ -1,181 +1,37 @@
-# Deployment Guide
+# Deployment
 
-## Local Development with Docker Compose
+Nothing here has been deployed yet; these are the reproducible steps and the decisions behind them.
 
-### Prerequisites
+## Recommended: one VPS + Docker Compose + Caddy
 
-- Docker 24+
-- Docker Compose v2+
+A 2 vCPU / 4 GB VPS (about 6–12 USD/month) runs everything: six JVMs (≈ 256–512 MB each), PostgreSQL and Caddy. Services never sleep, the webhook is always reachable, and
+the architecture is unchanged. Caddy obtains and renews the HTTPS certificate by itself.
 
-### Quick Start
-
-```bash
-cp .env.example .env
-# Edit .env with your settings
-docker compose up --build
+```
+Internet ─▶ Caddy :80/:443 ─▶ storefront (nginx) ─▶ /api ─▶ gateway ─▶ services ─▶ PostgreSQL
+Mercado Pago ─▶ https://cronosgeneve.com/api/payments/webhook (same path)
 ```
 
-### Service URLs
+1. Buy the domain; create DNS `A` records for `cronosgeneve.com` and `www` pointing at the server. Same-origin hosting means no CORS and no `api.` subdomain is needed
+   (use `api.cronosgeneve.com` only if the storefront moves to separate static hosting; then set `ALLOWED_ORIGINS` and `VITE_API_URL`).
+2. On the server (Ubuntu): install Docker, clone the repository, open ports 22/80/443 only.
+3. `scripts/gen-env.sh`, then edit `.env`: `DOMAIN`, `FRONTEND_URL=https://cronosgeneve.com`, `ALLOWED_ORIGINS=https://cronosgeneve.com`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`,
+   `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`, `MP_WEBHOOK_URL=https://cronosgeneve.com/api/payments/webhook`, optional SMTP, and `chmod 600 .env`.
+4. `docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d --build`. Only Caddy is published; PostgreSQL and the gateway are private.
+5. Check `https://cronosgeneve.com`, sign in with the admin from `.env`, and run the Mercado Pago Sandbox test ([PAYMENTS.md](PAYMENTS.md)) from the real domain **before** switching to production credentials.
+6. Backups: the `backup` service writes a daily dump of each database to `./backups` (14 days). Copy them off the server regularly; test a restore once.
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
-| API Gateway | http://localhost:8080 |
-| Auth Service | http://localhost:8081 |
-| Catalog Service | http://localhost:8082 |
-| Order Service | http://localhost:8083 |
-| Payment Service | http://localhost:8084 |
-| Notification Service | http://localhost:8085 |
-| PostgreSQL | localhost:5432 |
+`TRUSTED_PROXY_COUNT` is 2 in the production overlay (Caddy → nginx → gateway). The `prod` profile creates no demo users.
 
-### Health Checks
+## Alternative: Render or Railway
 
-Each service exposes a health endpoint:
+Deploy the gateway and the storefront as public web services and the five other services as **private** services; use the provider's managed PostgreSQL with five databases
+(or five small instances) and set each `POSTGRES_HOST/PORT`, `*_SERVICE_URL`, `JWT_SECRET`, `INTERNAL_API_TOKEN`. Costs more (six always-on services) and free tiers sleep, which breaks webhooks and
+slows the first request after idle; use paid instances. The provider supplies HTTPS and the domain mapping. The Dockerfiles work unchanged.
 
-```bash
-curl http://localhost:8080/actuator/health  # Gateway
-curl http://localhost:8081/actuator/health  # Auth
-curl http://localhost:8082/actuator/health  # Catalog
-curl http://localhost:8083/actuator/health  # Order
-curl http://localhost:8084/actuator/health  # Payment
-curl http://localhost:8085/actuator/health  # Notification
-```
+## Before real customers
 
-### Stopping Services
-
-```bash
-docker compose down          # Stop containers
-docker compose down -v       # Stop and remove volumes (deletes data)
-```
-
-## Running Without Docker
-
-### 1. Start PostgreSQL
-
-```bash
-docker compose up postgres -d
-```
-
-Or install PostgreSQL locally and create the databases manually:
-
-```sql
-CREATE DATABASE auth_db;
-CREATE DATABASE catalog_db;
-CREATE DATABASE order_db;
-CREATE DATABASE payment_db;
-CREATE DATABASE notification_db;
-```
-
-### 2. Start Backend Services
-
-```bash
-# Each in a separate terminal
-cd backend/auth-service && mvn spring-boot:run -Dspring-boot.run.profiles=dev
-cd backend/catalog-service && mvn spring-boot:run -Dspring-boot.run.profiles=dev
-cd backend/order-service && mvn spring-boot:run -Dspring-boot.run.profiles=dev
-cd backend/payment-service && mvn spring-boot:run -Dspring-boot.run.profiles=dev
-cd backend/notification-service && mvn spring-boot:run -Dspring-boot.run.profiles=dev
-cd backend/api-gateway && mvn spring-boot:run
-```
-
-### 3. Start Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Production Deployment
-
-### Environment Variables
-
-Critical variables for production:
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `JWT_SECRET` | Strong random key, min 256 bits | Yes |
-| `POSTGRES_PASSWORD` | Strong database password | Yes |
-| `MERCADOPAGO_ACCESS_TOKEN` | Production access token | For payments |
-| `MERCADOPAGO_WEBHOOK_SECRET` | Webhook signing secret | For payments |
-| `MERCADOPAGO_NOTIFICATION_URL` | Public webhook URL | For payments |
-| `ALLOWED_ORIGINS` | Frontend production URL | Yes |
-
-### HTTPS
-
-HTTPS should be terminated at the load balancer or reverse proxy level. The application services run on HTTP internally.
-
-Example with Nginx as reverse proxy:
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name cronos-geneve.com;
-
-    ssl_certificate /etc/ssl/certs/cronos.crt;
-    ssl_certificate_key /etc/ssl/private/cronos.key;
-
-    location / {
-        proxy_pass http://frontend:80;
-    }
-
-    location /api/ {
-        proxy_pass http://api-gateway:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-### Database
-
-For production:
-- Use managed PostgreSQL (AWS RDS, Google Cloud SQL, etc.)
-- Enable SSL connections
-- Set up automated backups
-- Use separate database instances per service if needed for scaling
-- Configure connection pooling (HikariCP is included with Spring Boot)
-
-### Production Checklist
-
-- [ ] Set strong `JWT_SECRET` (at least 256 bits of entropy)
-- [ ] Set strong `POSTGRES_PASSWORD`
-- [ ] Configure `ALLOWED_ORIGINS` to production frontend URL only
-- [ ] Set up HTTPS termination
-- [ ] Configure Mercado Pago production credentials
-- [ ] Set `MERCADOPAGO_NOTIFICATION_URL` to public HTTPS webhook URL
-- [ ] Remove or restrict demo accounts
-- [ ] Enable PostgreSQL SSL
-- [ ] Set up database backups
-- [ ] Configure log aggregation
-- [ ] Set up monitoring and alerting
-- [ ] Review and restrict CORS origins
-- [ ] Run `spring.profiles.active=prod` on all services
-
-### Monitoring
-
-Each service exposes Spring Boot Actuator endpoints:
-
-- `/actuator/health` - Service health status
-- `/actuator/info` - Application info
-- `/actuator/metrics` - Micrometer metrics (when enabled)
-
-For production monitoring, integrate with:
-- Prometheus + Grafana for metrics
-- ELK stack or similar for log aggregation
-- Uptime monitoring for health endpoints
-
-### Scaling
-
-Each microservice can be scaled independently:
-
-```bash
-docker compose up --scale catalog-service=3
-```
-
-When scaling, consider:
-- Load balancing at the gateway level
-- Database connection pool limits
-- Shared nothing architecture (each instance is stateless)
+* Remove the sample catalogue (migrations V4/V7) and load your own products and photographs ([IMAGE-SOURCES.md](IMAGE-SOURCES.md)).
+* Confirm the currency your Mercado Pago account accepts and update product currency/prices.
+* Replace the academic notices with real legal pages (terms, privacy, returns).
+* Consider managed PostgreSQL with point-in-time recovery, log shipping, uptime monitoring and moving tokens to HttpOnly cookies.

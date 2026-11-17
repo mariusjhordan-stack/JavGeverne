@@ -1,165 +1,143 @@
+# Local full stack:  scripts/gen-env.sh && docker compose up --build
+# Storefront http://localhost:5173 · API gateway http://localhost:8080
+# Production uses docker-compose.prod.yml (HTTPS, nothing published except Caddy).
+x-service: &service
+  restart: unless-stopped
+  environment: &common-env
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+    POSTGRES_HOST: postgres
+    POSTGRES_USER: ${POSTGRES_USER:?run scripts/gen-env.sh}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run scripts/gen-env.sh}
+    INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?run scripts/gen-env.sh}
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: cronos-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-cronos}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cronos_secret_2024}
+      POSTGRES_USER: ${POSTGRES_USER:?run scripts/gen-env.sh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run scripts/gen-env.sh}
       POSTGRES_MULTIPLE_DATABASES: auth_db,catalog_db,order_db,payment_db,notification_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/database/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+      - ./infrastructure/database/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cronos}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
-      retries: 5
-
-  api-gateway:
-    build:
-      context: ./backend/api-gateway
-      dockerfile: Dockerfile
-    container_name: cronos-gateway
-    ports:
-      - "${GATEWAY_PORT:-8080}:8080"
-    environment:
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
-    depends_on:
-      auth-service:
-        condition: service_healthy
-      catalog-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 10
+    mem_limit: 512m
 
   auth-service:
-    build:
-      context: ./backend/auth-service
-      dockerfile: Dockerfile
-    container_name: cronos-auth
+    <<: *service
+    build: ./backend/auth-service
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth_db
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-cronos}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-cronos_secret_2024}
-      - JWT_SECRET=${JWT_SECRET:-cronos-geneve-jwt-secret-key-must-be-at-least-256-bits-long-for-hs256}
-      - JWT_EXPIRATION=${JWT_EXPIRATION:-3600000}
-      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-86400000}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      <<: *common-env
+      JWT_SECRET: ${JWT_SECRET:?run scripts/gen-env.sh}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on: { postgres: { condition: service_healthy } }
+    healthcheck: &hc
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
       start_period: 60s
+    mem_limit: 512m
 
   catalog-service:
-    build:
-      context: ./backend/catalog-service
-      dockerfile: Dockerfile
-    container_name: cronos-catalog
-    environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/catalog_db
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-cronos}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-cronos_secret_2024}
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *service
+    build: ./backend/catalog-service
+    depends_on: { postgres: { condition: service_healthy } }
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      <<: *hc
+      test: ["CMD", "curl", "-fsS", "http://localhost:8082/actuator/health"]
+    mem_limit: 512m
 
   order-service:
-    build:
-      context: ./backend/order-service
-      dockerfile: Dockerfile
-    container_name: cronos-order
+    <<: *service
+    build: ./backend/order-service
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_db
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-cronos}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-cronos_secret_2024}
-      - CATALOG_SERVICE_URL=http://catalog-service:8082
+      <<: *common-env
+      CATALOG_SERVICE_URL: http://catalog-service:8082
+      NOTIFICATION_SERVICE_URL: http://notification-service:8085
+      ORDER_RESERVATION_TTL_MINUTES: ${ORDER_RESERVATION_TTL_MINUTES:-60}
     depends_on:
-      postgres:
-        condition: service_healthy
-      catalog-service:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
+      catalog-service: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      <<: *hc
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health"]
+    mem_limit: 512m
 
   payment-service:
-    build:
-      context: ./backend/payment-service
-      dockerfile: Dockerfile
-    container_name: cronos-payment
+    <<: *service
+    build: ./backend/payment-service
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/payment_db
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-cronos}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-cronos_secret_2024}
-      - ORDER_SERVICE_URL=http://order-service:8083
-      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN:-}
-      - MERCADOPAGO_WEBHOOK_SECRET=${MERCADOPAGO_WEBHOOK_SECRET:-}
-      - MERCADOPAGO_NOTIFICATION_URL=${MERCADOPAGO_NOTIFICATION_URL:-}
+      <<: *common-env
+      ORDER_SERVICE_URL: http://order-service:8083
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN:-}
+      MERCADOPAGO_WEBHOOK_SECRET: ${MERCADOPAGO_WEBHOOK_SECRET:-}
+      MP_WEBHOOK_URL: ${MP_WEBHOOK_URL:-}
+      MP_SUCCESS_URL: ${MP_SUCCESS_URL:-}
+      MP_FAILURE_URL: ${MP_FAILURE_URL:-}
+      MP_PENDING_URL: ${MP_PENDING_URL:-}
     depends_on:
-      postgres:
-        condition: service_healthy
-      order-service:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
+      order-service: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      <<: *hc
+      test: ["CMD", "curl", "-fsS", "http://localhost:8084/actuator/health"]
+    mem_limit: 512m
 
   notification-service:
-    build:
-      context: ./backend/notification-service
-      dockerfile: Dockerfile
-    container_name: cronos-notification
+    <<: *service
+    build: ./backend/notification-service
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/notification_db
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-cronos}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-cronos_secret_2024}
-    depends_on:
-      postgres:
-        condition: service_healthy
+      <<: *common-env
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@example.com}
+    depends_on: { postgres: { condition: service_healthy } }
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      <<: *hc
+      test: ["CMD", "curl", "-fsS", "http://localhost:8085/actuator/health"]
+    mem_limit: 384m
+
+  api-gateway:
+    <<: *service
+    build: ./backend/api-gateway
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?run scripts/gen-env.sh}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?run scripts/gen-env.sh}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      TRUSTED_PROXY_COUNT: ${TRUSTED_PROXY_COUNT:-0}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-20}
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      auth-service: { condition: service_healthy }
+      catalog-service: { condition: service_healthy }
+      order-service: { condition: service_healthy }
+      payment-service: { condition: service_healthy }
+      notification-service: { condition: service_healthy }
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+    mem_limit: 384m
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: cronos-frontend
+    build: ./frontend
+    restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-5173}:80"
-    depends_on:
-      api-gateway:
-        condition: service_healthy
+      - "${FRONTEND_PORT:-5173}:8080"
+    depends_on: { api-gateway: { condition: service_healthy } }
+    mem_limit: 128m
 
 volumes:
   postgres_data:
