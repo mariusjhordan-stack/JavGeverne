@@ -1,3 +1,5 @@
+import { useLanguage } from '../../context/LanguageContext';
+
 export const Heading = ({ title, children }) => (
   <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
     <h1 className="font-serif text-4xl text-ink">{title}</h1>
@@ -13,23 +15,29 @@ export const Stat = ({ label, value, hint, testId }) => (
   </div>
 );
 
-export const Table = ({ head, children, empty }) => (
-  <div className="overflow-x-auto border-y hairline">
-    <table className="w-full text-sm">
-      <thead><tr className="text-left text-[0.68rem] tracking-[0.2em] uppercase text-charcoal/60">{head.map((h) => <th key={h} scope="col" className="py-3 pr-6 font-normal">{h}</th>)}</tr></thead>
-      <tbody className="divide-y hairline">{children}</tbody>
-    </table>
-    {empty && <p className="py-12 text-center text-charcoal/60">{empty}</p>}
-  </div>
-);
+export const Table = ({ head, children, empty }) => {
+  const { t } = useLanguage();
+  return (
+    <div className="overflow-x-auto border-y hairline">
+      <table className="w-full text-sm">
+        <thead><tr className="text-left text-[0.68rem] tracking-[0.2em] uppercase text-charcoal/60">{head.map((h) => <th key={h} scope="col" className="py-3 pr-6 font-normal">{t(h)}</th>)}</tr></thead>
+        <tbody className="divide-y hairline">{children}</tbody>
+      </table>
+      {empty && <p className="py-12 text-center text-charcoal/60">{t(empty)}</p>}
+    </div>
+  );
+};
 
-export const Pager = ({ page, totalPages, onPage }) => totalPages > 1 && (
-  <div className="flex items-center justify-end gap-4 mt-6 text-xs tracking-[0.18em] uppercase">
-    <button disabled={page <= 0} onClick={() => onPage(page - 1)} className="disabled:opacity-30 hover:text-gold-dark">Previous</button>
-    <span>{page + 1} / {totalPages}</span>
-    <button disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)} className="disabled:opacity-30 hover:text-gold-dark">Next</button>
-  </div>
-);
+export const Pager = ({ page, totalPages, onPage }) => {
+  const { t } = useLanguage();
+  return totalPages > 1 && (
+    <div className="flex items-center justify-end gap-4 mt-6 text-xs tracking-[0.18em] uppercase">
+      <button disabled={page <= 0} onClick={() => onPage(page - 1)} className="disabled:opacity-30 hover:text-gold-dark">{t('Previous')}</button>
+      <span>{page + 1} / {totalPages}</span>
+      <button disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)} className="disabled:opacity-30 hover:text-gold-dark">{t('Next')}</button>
+    </div>
+  );
+};
 
 export const Field = ({ label, id, children }) => (
   <div>

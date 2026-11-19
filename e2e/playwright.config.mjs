@@ -1,7 +1,7 @@
 import { defineConfig } from 'playwright/test';
 
 // The stack must already be running: see scripts/e2e.sh, which starts PostgreSQL-backed services,
-// the Mercado Pago test double and the storefront, then runs this suite.
+// the Stripe test double and the storefront, then runs this suite.
 export default defineConfig({
   testDir: './tests',
   timeout: 60_000,

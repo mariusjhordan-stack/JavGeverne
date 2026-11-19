@@ -7,8 +7,10 @@ import { getPaymentForOrder, startCheckout } from '../api/payments';
 import { errorMessage, errorCode } from '../api/client';
 import { money, shortId, dateTime, statusLabel } from '../lib/format';
 import OrderTimeline from '../components/OrderTimeline';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function OrderDetailPage() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [payment, setPayment] = useState(null);
@@ -24,9 +26,9 @@ export default function OrderDetailPage() {
     setBusy(true);
     try {
       setOrder(await cancelOrder(id));
-      toast.success('Order cancelled');
+      toast.success(t('Order cancelled'));
     } catch (err) {
-      toast.error(errorMessage(err, 'This order could not be cancelled'));
+      toast.error(errorMessage(err, t('This order could not be cancelled')));
     } finally {
       setBusy(false);
     }
@@ -39,7 +41,7 @@ export default function OrderDetailPage() {
       window.location.assign(checkout.checkoutUrl);
     } catch (err) {
       toast.error(errorCode(err) === 'PAYMENT_PROVIDER_NOT_CONFIGURED'
-        ? 'Online payment is not available right now.' : errorMessage(err, 'Payment could not be started'));
+        ? t('Online payment is not available right now.') : errorMessage(err, t('Payment could not be started')));
       setBusy(false);
       load();
     }
@@ -49,8 +51,8 @@ export default function OrderDetailPage() {
   if (!order) {
     return (
       <div className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <h1 className="font-serif text-2xl mb-4">Order not found</h1>
-        <Link to="/orders" className="text-gold-dark underline">Back to orders</Link>
+        <h1 className="font-serif text-2xl mb-4">{t('Order not found')}</h1>
+        <Link to="/orders" className="text-gold-dark underline">{t('Back to orders')}</Link>
       </div>
     );
   }
@@ -60,19 +62,19 @@ export default function OrderDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12" data-testid="order-detail" data-order-status={order.status}>
-      <Link to="/orders" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gold-dark mb-8"><ArrowLeft size={16} /> Back to orders</Link>
+      <Link to="/orders" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gold-dark mb-8"><ArrowLeft size={16} /> {t('Back to orders')}</Link>
       <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
         <div>
-          <h1 className="font-serif text-3xl text-navy">Order {shortId(order.id)}</h1>
-          <p className="text-sm text-gray-600 mt-1">Placed {dateTime(order.createdAt)}</p>
+          <h1 className="font-serif text-3xl text-navy">{t('Order')} {shortId(order.id)}</h1>
+          <p className="text-sm text-gray-600 mt-1">{t('Placed')} {dateTime(order.createdAt)}</p>
         </div>
-        <span className="text-sm font-medium px-3 py-1 bg-cream text-navy" data-testid="order-status">{statusLabel(order.status)}</span>
+        <span className="text-sm font-medium px-3 py-1 bg-cream text-navy" data-testid="order-status">{t(statusLabel(order.status))}</span>
       </div>
 
       {stopped ? (
         <p className="border border-gray-200 p-5 mb-8 text-sm text-gray-700">
-          {order.status === 'REFUNDED' ? 'This order was refunded.'
-            : order.cancelReason === 'EXPIRED' ? 'This order was cancelled because payment was not completed in time.' : 'This order was cancelled.'}
+          {order.status === 'REFUNDED' ? t('This order was refunded.')
+            : order.cancelReason === 'EXPIRED' ? t('This order was cancelled because payment was not completed in time.') : t('This order was cancelled.')}
         </p>
       ) : (
         <div className="mb-10"><OrderTimeline order={order} /></div>
@@ -81,15 +83,15 @@ export default function OrderDetailPage() {
       {payable && (
         <div className="border border-amber-200 bg-amber-50 p-5 mb-8 flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-amber-900">
-            {order.status === 'PAYMENT_FAILED' ? 'Your payment was not completed.' : 'This order is waiting for payment.'}
-            {order.expiresAt && <> Your pieces are reserved until {dateTime(order.expiresAt)}.</>}
+            {order.status === 'PAYMENT_FAILED' ? t('Your payment was not completed.') : t('This order is waiting for payment.')}
+            {order.expiresAt && <> {t('Your pieces are reserved until')} {dateTime(order.expiresAt)}.</>}
           </p>
           <div className="flex gap-3">
             <button onClick={handlePay} disabled={busy} className="bg-navy text-white px-5 py-2 text-sm uppercase tracking-wider disabled:opacity-50">
-              {order.status === 'PAYMENT_FAILED' ? 'Try payment again' : 'Pay now'}
+              {order.status === 'PAYMENT_FAILED' ? t('Try payment again') : t('Pay now')}
             </button>
             <button onClick={handleCancel} disabled={busy} className="border border-red-300 text-red-700 px-5 py-2 text-sm uppercase tracking-wider disabled:opacity-50">
-              Cancel order
+              {t('Cancel order')}
             </button>
           </div>
         </div>
@@ -110,14 +112,14 @@ export default function OrderDetailPage() {
 
       <div className="grid sm:grid-cols-2 gap-6">
         <div className="border border-gray-200 p-6">
-          <h2 className="text-xs uppercase tracking-wider text-gray-600 mb-3">Shipping to</h2>
+          <h2 className="text-xs uppercase tracking-wider text-gray-600 mb-3">{t('Shipping to')}</h2>
           <p className="text-sm text-gray-800">{order.shippingAddress}</p>
         </div>
         <div className="border border-gray-200 p-6">
-          <h2 className="text-xs uppercase tracking-wider text-gray-600 mb-3">Payment</h2>
-          <div className="flex justify-between font-medium text-lg text-navy"><span>Total</span><span data-testid="order-total">{money(order.total, order.currency)}</span></div>
+          <h2 className="text-xs uppercase tracking-wider text-gray-600 mb-3">{t('Payment')}</h2>
+          <div className="flex justify-between font-medium text-lg text-navy"><span>{t('Total')}</span><span data-testid="order-total">{money(order.total, order.currency)}</span></div>
           <p className="text-sm text-gray-700 mt-3" data-testid="payment-status">
-            {payment ? <>Payment status: <span className="font-medium">{payment.status.replace(/_/g, ' ').toLowerCase()}</span>{payment.paymentMethod ? ` · ${payment.paymentMethod}` : ''}</> : 'No payment has been started for this order.'}
+            {payment ? <>{t('Payment status:')} <span className="font-medium">{t(payment.status.replace(/_/g, ' ').toLowerCase())}</span>{payment.paymentMethod ? ` · ${t(payment.paymentMethod.toLowerCase())}` : ''}</> : t('No payment has been started for this order.')}
           </p>
         </div>
       </div>

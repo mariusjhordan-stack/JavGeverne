@@ -23,21 +23,17 @@ app:
     internal-token: ${INTERNAL_API_TOKEN}
   order-service-url: ${ORDER_SERVICE_URL:http://order-service:8083}
 
-mercadopago:
+stripe:
   # Server-side only. Without them the store still runs but checkout answers 503 and webhooks are refused.
-  access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
-  webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:}
-  api-base-url: ${MERCADOPAGO_API_BASE_URL:https://api.mercadopago.com}
+  secret-key: ${STRIPE_SECRET_KEY:}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+  api-base-url: ${STRIPE_API_BASE_URL:https://api.stripe.com}
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
-  # Each defaults to FRONTEND_URL + /checkout/{success,failure,pending}
-  success-url: ${MP_SUCCESS_URL:}
-  failure-url: ${MP_FAILURE_URL:}
-  pending-url: ${MP_PENDING_URL:}
-  # Public HTTPS URL of POST /api/payments/webhook
-  webhook-url: ${MP_WEBHOOK_URL:}
-  webhook-max-age-seconds: ${MP_WEBHOOK_MAX_AGE_SECONDS:900}
+  success-url: ${STRIPE_SUCCESS_URL:}
+  cancel-url: ${STRIPE_CANCEL_URL:}
+  webhook-max-age-seconds: ${STRIPE_WEBHOOK_MAX_AGE_SECONDS:300}
   reconcile-enabled: true
-  reconcile-interval-ms: ${MP_RECONCILE_INTERVAL_MS:300000}
+  reconcile-interval-ms: ${STRIPE_RECONCILE_INTERVAL_MS:300000}
 
 server.error.include-message: never
 

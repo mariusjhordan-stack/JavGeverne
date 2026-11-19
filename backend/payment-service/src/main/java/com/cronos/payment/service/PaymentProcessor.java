@@ -1,6 +1,5 @@
 package com.cronos.payment.service;
 
-import com.cronos.payment.client.MercadoPagoClient.PaymentInfo;
 import com.cronos.payment.client.OrderClient;
 import com.cronos.payment.entity.Payment;
 import com.cronos.payment.entity.PaymentEvent;
@@ -13,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,6 +27,9 @@ public class PaymentProcessor {
     private static final Logger log = LoggerFactory.getLogger(PaymentProcessor.class);
 
     public enum Outcome { APPLIED, DUPLICATE, IGNORED }
+
+    public record PaymentInfo(String id, String status, String statusDetail, BigDecimal transactionAmount,
+                              String currencyId, String externalReference, String paymentMethodId, String payerEmail) {}
 
     private final PaymentRepository paymentRepository;
     private final PaymentEventRepository eventRepository;
@@ -85,6 +88,11 @@ public class PaymentProcessor {
         if (incoming == null) {
             return Outcome.IGNORED;
         }
+        if (sameProviderPayment && (payment.getStatus() == incoming
+                || ((payment.getStatus() == PaymentStatus.REJECTED || payment.getStatus() == PaymentStatus.CANCELLED)
+                && incoming == PaymentStatus.IN_PROCESS))) {
+            return Outcome.IGNORED;
+        }
 
         payment.setStatus(incoming);
         payment.setStatusDetail(info.statusDetail());
@@ -110,11 +118,12 @@ public class PaymentProcessor {
 
     static PaymentStatus mapStatus(String providerStatus) {
         return switch (providerStatus) {
-            case "approved" -> PaymentStatus.APPROVED;
-            case "rejected" -> PaymentStatus.REJECTED;
-            case "cancelled" -> PaymentStatus.CANCELLED;
-            case "refunded", "charged_back" -> PaymentStatus.REFUNDED;
-            case "pending", "in_process", "authorized", "in_mediation" -> PaymentStatus.IN_PROCESS;
+            case "succeeded" -> PaymentStatus.APPROVED;
+            case "failed" -> PaymentStatus.REJECTED;
+            case "canceled" -> PaymentStatus.CANCELLED;
+            case "expired" -> PaymentStatus.REJECTED;
+            case "refunded" -> PaymentStatus.REFUNDED;
+            case "pending", "processing", "unpaid" -> PaymentStatus.IN_PROCESS;
             default -> null;
         };
     }

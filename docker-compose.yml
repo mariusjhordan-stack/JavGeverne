@@ -79,12 +79,11 @@ services:
       <<: *common-env
       ORDER_SERVICE_URL: http://order-service:8083
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-      MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN:-}
-      MERCADOPAGO_WEBHOOK_SECRET: ${MERCADOPAGO_WEBHOOK_SECRET:-}
-      MP_WEBHOOK_URL: ${MP_WEBHOOK_URL:-}
-      MP_SUCCESS_URL: ${MP_SUCCESS_URL:-}
-      MP_FAILURE_URL: ${MP_FAILURE_URL:-}
-      MP_PENDING_URL: ${MP_PENDING_URL:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_API_BASE_URL: ${STRIPE_API_BASE_URL:-https://api.stripe.com}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-}
+      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-}
     depends_on:
       postgres: { condition: service_healthy }
       order-service: { condition: service_healthy }

@@ -8,6 +8,7 @@ import { startCheckout } from '../api/payments';
 import { listAddresses } from '../api/account';
 import { errorMessage, errorCode } from '../api/client';
 import { money } from '../lib/format';
+import { useLanguage } from '../context/LanguageContext';
 
 const EMPTY = { recipient: '', line1: '', city: '', region: '', postalCode: '', country: '' };
 
@@ -16,6 +17,7 @@ const formatAddress = (a) =>
     .filter(Boolean).join(', ');
 
 export default function CheckoutPage() {
+  const { t } = useLanguage();
   const { items, totalPrice, clearCart } = useCart();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
@@ -35,8 +37,8 @@ export default function CheckoutPage() {
   if (items.length === 0 && !processing) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-6">
-        <h2 className="font-serif text-3xl text-navy mb-4">Your bag is empty</h2>
-        <Link to="/collection" className="text-gold-dark underline">Browse the collection</Link>
+        <h2 className="font-serif text-3xl text-navy mb-4">{t('Your bag is empty')}</h2>
+        <Link to="/collection" className="text-gold-dark underline">{t('Browse the collection')}</Link>
       </div>
     );
   }
@@ -46,7 +48,7 @@ export default function CheckoutPage() {
     setError('');
     const chosen = selected === 'new' ? address : saved.find((a) => a.id === selected);
     if (!chosen?.recipient || !chosen.line1 || !chosen.city || !chosen.country) {
-      setError('Please complete the shipping address.');
+      setError(t('Please complete the shipping address.'));
       return;
     }
     setProcessing(true);
@@ -55,7 +57,7 @@ export default function CheckoutPage() {
       // Only ids and quantities are sent: the server prices the order from the catalogue.
       order = await createOrder(items.map((i) => ({ productId: i.productId, quantity: i.quantity })), formatAddress(chosen));
     } catch (err) {
-      setError(errorMessage(err, 'We could not place your order.'));
+      setError(errorMessage(err, t('We could not place your order.')));
       setProcessing(false);
       return;
     }
@@ -65,8 +67,8 @@ export default function CheckoutPage() {
       window.location.assign(checkout.checkoutUrl);
     } catch (err) {
       toast.info(errorCode(err) === 'PAYMENT_PROVIDER_NOT_CONFIGURED'
-        ? 'Your order is reserved. Online payment is not available right now.'
-        : 'Your order is reserved, but payment could not be started. You can pay from the order page.');
+        ? t('Your order is reserved. Online payment is not available right now.')
+        : t('Your order is reserved, but payment could not be started. You can pay from the order page.'));
       navigate(`/orders/${order.id}`);
     }
   };
@@ -91,13 +93,13 @@ export default function CheckoutPage() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">
       <Link to="/cart" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gold-dark mb-8">
-        <ArrowLeft size={16} /> Back to bag
+        <ArrowLeft size={16} /> {t('Back to bag')}
       </Link>
-      <h1 className="font-serif text-3xl text-navy mb-10">Checkout</h1>
+      <h1 className="font-serif text-3xl text-navy mb-10">{t('Checkout')}</h1>
 
       <form onSubmit={handleSubmit} className="grid lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-5">
-          <h2 className="font-serif text-xl text-navy mb-4">Shipping address</h2>
+          <h2 className="font-serif text-xl text-navy mb-4">{t('Shipping address')}</h2>
           {saved.length > 0 && (
             <div className="space-y-2">
               {saved.map((a) => (
@@ -108,21 +110,21 @@ export default function CheckoutPage() {
               ))}
               <label className="flex items-center gap-3 border border-gray-200 p-4 cursor-pointer text-sm">
                 <input type="radio" name="address" checked={selected === 'new'} onChange={() => setSelected('new')} className="accent-gold" />
-                Use a different address
+                {t('Use a different address')}
               </label>
             </div>
           )}
           {selected === 'new' && (
             <>
-              {field('Full name', 'recipient')}
-              {field('Street address', 'line1')}
+              {field(t('Full name'), 'recipient')}
+              {field(t('Street address'), 'line1')}
               <div className="grid grid-cols-2 gap-4">
-                {field('City', 'city')}
-                {field('State / Province', 'region', false)}
+                {field(t('City'), 'city')}
+                {field(t('State / Province'), 'region', false)}
               </div>
               <div className="grid grid-cols-2 gap-4">
-                {field('Postal code', 'postalCode', false)}
-                {field('Country', 'country')}
+                {field(t('Postal code'), 'postalCode', false)}
+                {field(t('Country'), 'country')}
               </div>
             </>
           )}
@@ -130,7 +132,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="bg-cream p-8 self-start">
-          <h2 className="font-serif text-xl text-navy mb-6">Order summary</h2>
+          <h2 className="font-serif text-xl text-navy mb-6">{t('Order summary')}</h2>
           <div className="space-y-4 mb-6">
             {items.map((i) => (
               <div key={i.productId} className="flex justify-between text-sm gap-4">
@@ -140,18 +142,18 @@ export default function CheckoutPage() {
             ))}
           </div>
           <div className="border-t border-gray-300 pt-4 flex justify-between text-lg font-medium text-navy mb-2">
-            <span>Estimated total</span>
+            <span>{t('Estimated total')}</span>
             <span>{money(totalPrice)}</span>
           </div>
-          <p className="text-xs text-gray-600 mb-6">The final amount is confirmed by the store when the order is placed.</p>
+          <p className="text-xs text-gray-600 mb-6">{t('The final amount is confirmed by the store when the order is placed.')}</p>
           <button
             type="submit"
             disabled={processing}
             className="w-full flex items-center justify-center gap-2 bg-gold hover:bg-gold-light text-navy py-3 text-sm uppercase tracking-[0.15em] transition-colors disabled:opacity-50"
           >
-            {processing ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : 'Place order and pay'}
+            {processing ? <><Loader2 size={16} className="animate-spin" /> {t('Processing…')}</> : t('Place order and pay')}
           </button>
-          <p className="text-xs text-gray-600 mt-4 text-center">You will be redirected to Mercado Pago to pay securely.</p>
+          <p className="text-xs text-gray-600 mt-4 text-center">{t('You will be redirected to Stripe to pay securely.')}</p>
         </div>
       </form>
     </div>

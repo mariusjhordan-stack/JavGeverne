@@ -1,6 +1,6 @@
 package com.cronos.payment.service;
 
-import com.cronos.payment.config.MercadoPagoProperties;
+import com.cronos.payment.config.StripeProperties;
 import com.cronos.payment.entity.PaymentStatus;
 import com.cronos.payment.repository.PaymentRepository;
 import org.slf4j.Logger;
@@ -15,23 +15,23 @@ import java.util.UUID;
 
 /** Safety net for notifications that never arrived: asks the provider about checkouts still open. */
 @Component
-@ConditionalOnProperty(name = "mercadopago.reconcile-enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "stripe.reconcile-enabled", havingValue = "true", matchIfMissing = true)
 public class PaymentReconciliationJob {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentReconciliationJob.class);
 
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
-    private final MercadoPagoProperties properties;
+    private final StripeProperties properties;
 
     public PaymentReconciliationJob(PaymentRepository paymentRepository, PaymentService paymentService,
-                                    MercadoPagoProperties properties) {
+                                    StripeProperties properties) {
         this.paymentRepository = paymentRepository;
         this.paymentService = paymentService;
         this.properties = properties;
     }
 
-    @Scheduled(fixedDelayString = "${mercadopago.reconcile-interval-ms:300000}", initialDelayString = "${mercadopago.reconcile-interval-ms:300000}")
+    @Scheduled(fixedDelayString = "${stripe.reconcile-interval-ms:300000}", initialDelayString = "${stripe.reconcile-interval-ms:300000}")
     public void run() {
         if (!properties.isConfigured()) {
             return;

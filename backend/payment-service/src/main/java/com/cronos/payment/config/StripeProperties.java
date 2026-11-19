@@ -2,20 +2,18 @@ package com.cronos.payment.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "mercadopago")
-public record MercadoPagoProperties(
-        String accessToken,
+@ConfigurationProperties(prefix = "stripe")
+public record StripeProperties(
+        String secretKey,
         String webhookSecret,
         String apiBaseUrl,
         String frontendUrl,
         String successUrl,
-        String failureUrl,
-        String pendingUrl,
-        String webhookUrl,
+        String cancelUrl,
         long webhookMaxAgeSeconds
 ) {
     public boolean isConfigured() {
-        return accessToken != null && !accessToken.isBlank();
+        return secretKey != null && !secretKey.isBlank();
     }
 
     public boolean hasWebhookSecret() {
@@ -23,11 +21,7 @@ public record MercadoPagoProperties(
     }
 
     public String returnUrl(String kind) {
-        String explicit = switch (kind) {
-            case "success" -> successUrl;
-            case "failure" -> failureUrl;
-            default -> pendingUrl;
-        };
+        String explicit = "success".equals(kind) ? successUrl : cancelUrl;
         if (explicit != null && !explicit.isBlank()) {
             return explicit;
         }

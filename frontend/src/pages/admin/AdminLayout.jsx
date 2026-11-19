@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { LayoutDashboard, Watch, Boxes, ClipboardList, Users, CreditCard } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 const ITEMS = [
   ['/admin', 'Overview', LayoutDashboard, true],
@@ -11,14 +12,15 @@ const ITEMS = [
 ];
 
 export default function AdminLayout() {
+  const { t } = useLanguage();
   return (
     <div className="max-w-[88rem] mx-auto px-6 lg:px-12 py-10 grid lg:grid-cols-[13rem_1fr] gap-12">
-      <nav aria-label="Administration" className="lg:sticky lg:top-28 self-start flex lg:flex-col gap-1 overflow-x-auto">
-        <p className="eyebrow mb-4 hidden lg:block">Administration</p>
+      <nav aria-label={t('Administration')} className="lg:sticky lg:top-28 self-start flex lg:flex-col gap-1 overflow-x-auto">
+        <p className="eyebrow mb-4 hidden lg:block">{t('Administration')}</p>
         {ITEMS.map(([to, label, Icon, end]) => (
           <NavLink key={to} to={to} end={end}
             className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 text-sm whitespace-nowrap border-l-2 ${isActive ? 'border-gold-dark text-ink bg-cream' : 'border-transparent text-charcoal/70 hover:text-ink'}`}>
-            <Icon size={16} strokeWidth={1.5} /> {label}
+            <Icon size={16} strokeWidth={1.5} /> {t(label)}
           </NavLink>
         ))}
       </nav>

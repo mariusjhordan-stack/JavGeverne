@@ -1,6 +1,6 @@
 package com.cronos.payment.service;
 
-import com.cronos.payment.config.MercadoPagoProperties;
+import com.cronos.payment.config.StripeProperties;
 import com.cronos.payment.security.ApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -10,67 +10,56 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.List;
 
-/**
- * Mercado Pago signs "id:{data.id};request-id:{x-request-id};ts:{ts};" with HMAC-SHA256 and sends
- * it as x-signature: ts=...,v1=.... Verification is mandatory: with no secret configured every
- * webhook is refused.
- */
 @Component
 public class WebhookSignatureVerifier {
 
-    private static final long FUTURE_SKEW_SECONDS = 300;
+    private final StripeProperties properties;
 
-    private final MercadoPagoProperties properties;
-
-    public WebhookSignatureVerifier(MercadoPagoProperties properties) {
+    public WebhookSignatureVerifier(StripeProperties properties) {
         this.properties = properties;
     }
 
-    public void verify(String dataId, String signatureHeader, String requestId) {
+    public void verify(String payload, String signatureHeader) {
         if (!properties.hasWebhookSecret()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "WEBHOOK_NOT_CONFIGURED", "Webhook signature secret is not configured");
         }
-        if (dataId == null || dataId.isBlank() || signatureHeader == null || signatureHeader.isBlank()) {
+        if (payload == null || signatureHeader == null || signatureHeader.isBlank()) {
             throw unauthorized("Missing signature");
         }
-        String ts = null;
-        String v1 = null;
+        String timestamp = null;
+        List<String> signatures = new ArrayList<>();
         for (String part : signatureHeader.split(",")) {
             String[] pair = part.trim().split("=", 2);
-            if (pair.length == 2 && pair[0].trim().equals("ts")) ts = pair[1].trim();
-            if (pair.length == 2 && pair[0].trim().equals("v1")) v1 = pair[1].trim();
+            if (pair.length == 2 && pair[0].trim().equals("t")) timestamp = pair[1].trim();
+            if (pair.length == 2 && pair[0].trim().equals("v1")) signatures.add(pair[1].trim());
         }
-        if (ts == null || v1 == null) {
+        if (timestamp == null || signatures.isEmpty()) {
             throw unauthorized("Malformed signature");
         }
-        String manifest = "id:" + dataId.toLowerCase() + ";request-id:" + (requestId == null ? "" : requestId) + ";ts:" + ts + ";";
-        byte[] expected = hmac(manifest, properties.webhookSecret());
-        byte[] received;
+        long seconds;
         try {
-            received = HexFormat.of().parseHex(v1);
-        } catch (IllegalArgumentException e) {
-            throw unauthorized("Malformed signature");
-        }
-        if (!MessageDigest.isEqual(expected, received)) {
-            throw unauthorized("Signature mismatch");
-        }
-        checkTimestamp(ts);
-    }
-
-    private void checkTimestamp(String ts) {
-        long value;
-        try {
-            value = Long.parseLong(ts);
+            seconds = Long.parseLong(timestamp);
         } catch (NumberFormatException e) {
             throw unauthorized("Malformed timestamp");
         }
-        long seconds = value > 100_000_000_000L ? value / 1000 : value;
         long age = System.currentTimeMillis() / 1000 - seconds;
-        if (age > properties.webhookMaxAgeSeconds() || age < -FUTURE_SKEW_SECONDS) {
+        if (age > properties.webhookMaxAgeSeconds() || age < -300) {
             throw unauthorized("Signature timestamp outside the accepted window");
         }
+        byte[] expected = hmac(timestamp + "." + payload, properties.webhookSecret());
+        boolean valid = false;
+        for (String signature : signatures) {
+            try {
+                valid |= MessageDigest.isEqual(expected, HexFormat.of().parseHex(signature));
+            } catch (IllegalArgumentException ignored) {
+                // Other v1 signatures in the same header may still be valid during key rotation.
+            }
+        }
+        if (!valid) throw unauthorized("Signature mismatch");
     }
 
     public static byte[] hmac(String data, String secret) {

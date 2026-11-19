@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** With no webhook secret and no access token the service starts, but refuses webhooks and checkout. */
-@SpringBootTest(properties = {"mercadopago.webhook-secret=", "mercadopago.access-token="})
+@SpringBootTest(properties = {"stripe.webhook-secret=", "stripe.secret-key="})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class WebhookFailClosedTest {
@@ -27,11 +27,11 @@ class WebhookFailClosedTest {
 
     @Test
     void webhooksAreRefusedWhenNoSecretIsConfigured() throws Exception {
-        mvc.perform(post("/api/payments/webhook").param("data.id", "123").param("type", "payment")
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"type\":\"payment\",\"data\":{\"id\":\"123\"}}"))
+        mvc.perform(post("/api/payments/webhook")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"type\":\"checkout.session.completed\",\"data\":{\"object\":{\"id\":\"cs_test_123\"}}}"))
                 .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("WEBHOOK_NOT_CONFIGURED"));
-        mvc.perform(post("/api/payments/webhook").param("data.id", "123").param("type", "payment")
-                        .header("x-signature", "ts=1,v1=00").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        mvc.perform(post("/api/payments/webhook")
+                        .header("stripe-signature", "t=1,v1=00").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isServiceUnavailable());
         assertThat(events.count()).isZero();
     }

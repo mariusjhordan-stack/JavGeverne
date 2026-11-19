@@ -1,9 +1,11 @@
+const locale = () => (typeof document !== 'undefined' && document.documentElement.lang === 'es' ? 'es-ES' : 'en-US');
+
 export const money = (value, currency = 'USD') =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: Number(value) % 1 === 0 ? 0 : 2 }).format(Number(value || 0));
+  new Intl.NumberFormat(locale(), { style: 'currency', currency, maximumFractionDigits: Number(value) % 1 === 0 ? 0 : 2 }).format(Number(value || 0));
 
 export const shortId = (id) => `#${String(id || '').slice(0, 8).toUpperCase()}`;
 
-export const dateTime = (value) => (value ? new Date(value).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '');
+export const dateTime = (value) => (value ? new Date(value).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' }) : '');
 
 /** "41mm" and "41" both read as "41 mm". */
 export const withUnit = (value, unit) => {

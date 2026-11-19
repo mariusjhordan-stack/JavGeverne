@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import { useLanguage } from './context/LanguageContext';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const CatalogPage = lazy(() => import('./pages/CatalogPage'));
@@ -32,11 +33,12 @@ const AdminCustomersList = lazy(() => import('./pages/admin/Customers').then((m)
 const AdminCustomerDetail = lazy(() => import('./pages/admin/Customers').then((m) => ({ default: m.CustomerDetail })));
 
 function Loading() {
+  const { t } = useLanguage();
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-[#c9a94e] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-sm text-gray-500 tracking-wider uppercase">Loading</p>
+        <p className="text-sm text-gray-500 tracking-wider uppercase">{t('Loading')}</p>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs the six services directly on this machine against a local PostgreSQL (no Docker needed for the JVMs).
 #   scripts/dev-stack.sh start [--build] [--env FILE]   scripts/dev-stack.sh stop   scripts/dev-stack.sh status
-# --env FILE layers extra settings over .env (e2e/stack.env points payments at the Mercado Pago test double).
+# --env FILE layers extra settings over .env (e2e/stack.env points payments at the Stripe test double).
 # PostgreSQL must be reachable at POSTGRES_HOST:POSTGRES_PORT (default localhost:5432), e.g. `docker compose up -d postgres`.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

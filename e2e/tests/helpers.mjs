@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 
 export const API = process.env.E2E_API_URL || 'http://localhost:8080';
-export const STUB = process.env.E2E_MP_STUB_URL || 'http://127.0.0.1:9099';
+export const STUB = process.env.E2E_STRIPE_STUB_URL || 'http://127.0.0.1:9099';
 export const ADMIN = {
   email: process.env.E2E_ADMIN_EMAIL || 'admin@cronos.com',
   password: process.env.E2E_ADMIN_PASSWORD || 'Admin123!',
@@ -48,7 +48,7 @@ export async function placeOrder(request, token, productId, quantity = 1, extra 
   });
 }
 
-/** Tells the Mercado Pago test double what happened to a payment; it then calls our webhook like the provider would. */
+/** Tells the Stripe test double what happened to a payment; it then calls our webhook like the provider would. */
 export async function providerPayment(request, data) {
   const r = await request.post(`${STUB}/__control/payments`, { data });
   return r.json();
