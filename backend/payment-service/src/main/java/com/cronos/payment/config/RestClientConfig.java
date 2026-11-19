@@ -8,7 +8,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties(MercadoPagoProperties.class)
+@EnableConfigurationProperties(StripeProperties.class)
 public class RestClientConfig {
 
     private static SimpleClientHttpRequestFactory timeouts() {
@@ -18,8 +18,8 @@ public class RestClientConfig {
         return factory;
     }
 
-    @Bean("mercadoPagoRestClient")
-    public RestClient mercadoPagoRestClient(MercadoPagoProperties properties) {
+    @Bean("stripeRestClient")
+    public RestClient stripeRestClient(StripeProperties properties) {
         return RestClient.builder().baseUrl(properties.apiBaseUrl()).requestFactory(timeouts()).build();
     }
 

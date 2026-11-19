@@ -13,7 +13,7 @@
   is **never routed** by the gateway.
 * Rules: public = catalogue reads, register, login, refresh, the payment webhook; authenticated = everything else under `/api`;
   `/api/admin/**` = ADMIN. Every service re-enforces its own rules. Orders, payments and addresses are owner-scoped (404 for others).
-* Nobody sets an order to PAID by hand: payment states come only from payment-service after it verified the payment with Mercado Pago;
+* Nobody sets an order to PAID by hand: payment states come only from payment-service after it verifies the payment with Stripe;
   administrators may only move paid orders through fulfilment.
 
 ## Other controls
@@ -26,7 +26,7 @@
 * CORS limited to `ALLOWED_ORIGINS`, no credentials. Security headers from the gateway and nginx/Caddy (HSTS in production).
 * Errors are `{error, code}` without stack traces or class names. Actuator exposes only `health` without details.
 * SQL is parameterised (JPA); search input is escaped; page size is capped; sort is a whitelist.
-* Mercado Pago credentials exist only in payment-service's environment, never in the frontend.
+* Stripe secret and webhook keys exist only in payment-service's environment, never in the frontend.
 * Containers run as non-root; PostgreSQL is not published in production.
 
 ## Known limits

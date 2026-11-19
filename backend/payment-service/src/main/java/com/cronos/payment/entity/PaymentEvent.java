@@ -17,7 +17,7 @@ public class PaymentEvent {
     @Column(name = "payment_id", nullable = false)
     private UUID paymentId;
 
-    @Column(name = "provider_payment_id", nullable = false, length = 64)
+    @Column(name = "provider_payment_id", nullable = false, length = 255)
     private String providerPaymentId;
 
     @Column(name = "provider_status", nullable = false, length = 40)

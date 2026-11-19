@@ -8,7 +8,7 @@ Errors are `{ "error": "...", "code": "..." }`; validation errors also carry `fi
 | POST | `/api/auth/register` · `/login` · `/refresh` · `/logout` | Tokens: `{token, refreshToken, email, role, firstName, lastName}`. Refresh tokens are single use |
 | GET | `/api/products` | `q, brandId, categoryId, minPrice, maxPrice, movementType, featured, sort=newest\|price_asc\|price_desc\|name, page, size≤48` |
 | GET | `/api/products/{id}` · `/api/products/featured` · `/api/brands` · `/api/brands/{idOrSlug}` · `/api/categories` | |
-| POST | `/api/payments/webhook` | Called by Mercado Pago; authenticated by HMAC signature |
+| POST | `/api/payments/webhook` | Called by Stripe; authenticated by `Stripe-Signature` |
 
 ## Signed in
 | Method | Path | Notes |
@@ -20,7 +20,7 @@ Errors are `{ "error": "...", "code": "..." }`; validation errors also carry `fi
 | GET | `/api/orders` · `/api/orders/{id}` | Own orders, with `history` (tracking) |
 | POST | `/api/orders/{id}/cancel` | Only `PENDING` / `PAYMENT_FAILED`; releases stock |
 | POST | `/api/payments/preference` `{orderId}` | Returns `{checkoutUrl}`; 503 `PAYMENT_PROVIDER_NOT_CONFIGURED` without credentials |
-| GET | `/api/payments/order/{orderId}` · POST `/api/payments/order/{orderId}/sync` | Sync asks Mercado Pago |
+| GET | `/api/payments/order/{orderId}` · POST `/api/payments/order/{orderId}/sync` | Sync asks Stripe |
 | GET | `/api/notifications` | Own notifications |
 
 ## Administrator (`/api/admin/**`)

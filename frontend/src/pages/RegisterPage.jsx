@@ -4,8 +4,10 @@ import { Loader2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import { errorMessage } from '../api/client';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function RegisterPage() {
+  const { t } = useLanguage();
   const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
@@ -22,19 +24,19 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('Passwords do not match'));
       return;
     }
     if (form.password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError(t('Password must be at least 8 characters'));
       return;
     }
     setLoading(true);
     try {
       await register({ firstName: form.firstName, lastName: form.lastName, email: form.email, password: form.password });
-      toast.success('Account created successfully');
+      toast.success(t('Account created successfully'));
     } catch (err) {
-      setError(errorMessage(err, 'Registration failed'));
+      setError(errorMessage(err, t('Registration failed')));
     } finally {
       setLoading(false);
     }
@@ -60,8 +62,8 @@ export default function RegisterPage() {
       <div className="w-full max-w-md bg-white p-10 shadow-sm">
         <div className="text-center mb-8">
           <Clock size={32} className="text-gold mx-auto mb-3" strokeWidth={1} />
-          <h1 className="font-serif text-3xl text-navy">Create Account</h1>
-          <p className="text-sm text-gray-500 mt-1">Join the Cronos Geneve community</p>
+          <h1 className="font-serif text-3xl text-navy">{t('Create Account')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('Join the Cronos Geneve community')}</p>
         </div>
 
         {error && (
@@ -70,24 +72,24 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
-            {field('First Name', 'firstName', 'text', 'John')}
-            {field('Last Name', 'lastName', 'text', 'Doe')}
+            {field(t('First Name'), 'firstName', 'text', 'John')}
+            {field(t('Last Name'), 'lastName', 'text', 'Doe')}
           </div>
-          {field('Email', 'email', 'email', 'your@email.com')}
-          {field('Password', 'password', 'password', 'At least 8 characters')}
-          {field('Confirm Password', 'confirmPassword', 'password', 'Repeat password')}
+          {field(t('Email'), 'email', 'email', 'your@email.com')}
+          {field(t('Password'), 'password', 'password', t('At least 8 characters'))}
+          {field(t('Confirm Password'), 'confirmPassword', 'password', t('Repeat password'))}
           <button
             type="submit"
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 bg-navy text-white py-3 text-sm uppercase tracking-[0.15em] hover:bg-navy-light transition-colors disabled:opacity-50"
           >
-            {loading ? <><Loader2 size={16} className="animate-spin" /> Creating...</> : 'Create Account'}
+            {loading ? <><Loader2 size={16} className="animate-spin" /> {t('Creating...')}</> : t('Create Account')}
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-8">
-          Already have an account?{' '}
-          <Link to="/login" className="text-gold hover:underline">Sign in</Link>
+          {t('Already have an account?')}{' '}
+          <Link to="/login" className="text-gold hover:underline">{t('Sign in')}</Link>
         </p>
       </div>
     </div>

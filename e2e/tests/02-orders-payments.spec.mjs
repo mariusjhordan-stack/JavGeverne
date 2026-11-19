@@ -2,7 +2,7 @@ import { test, expect } from 'playwright/test';
 import { API, STUB, ADMIN, bearer, login, registerUser, createProduct, retireProduct, getProduct, placeOrder, providerPayment } from './helpers.mjs';
 
 // Contracts between order, catalog, payment and notification, exercised over real HTTP.
-// Mercado Pago is replaced by the test double in e2e/mp-stub: this proves OUR handling, not the provider.
+// Stripe is replaced by the test double in e2e/stripe-stub: this proves OUR handling, not the provider.
 test.describe('orders, stock, payments and notifications', () => {
   let admin; let buyer; let product;
   const order = async (request, id) => (await request.get(`${API}/api/orders/${id}`, { headers: bearer(buyer.token) })).json();
@@ -52,11 +52,11 @@ test.describe('orders, stock, payments and notifications', () => {
     const o = await newOrder(request);
     const r = await request.post(`${API}/api/payments/preference`, { headers: bearer(buyer.token), data: { orderId: o.id, totalAmount: 1, currency: 'XXX' } });
     expect(r.status()).toBe(200);
-    const [pref] = await (await request.get(`${STUB}/__control/preferences?external_reference=${o.id}`)).json();
-    expect(pref.items[0].unit_price).toBe(1500);
-    expect(pref.external_reference).toBe(o.id);
-    expect(pref.back_urls.success).toContain(`/checkout/success?order=${o.id}`);
-    expect(pref.notification_url).toContain('/api/payments/webhook');
+    const [session] = await (await request.get(`${STUB}/__control/sessions?client_reference_id=${o.id}`)).json();
+    expect(session.amount_total).toBe(150000);
+    expect(session.client_reference_id).toBe(o.id);
+    expect(session.success_url).toContain(`/checkout/success?order=${o.id}&session_id={CHECKOUT_SESSION_ID}`);
+    expect(session.cancel_url).toContain('/checkout/failure?order=');
   });
 
   test('approved payment: verified, order paid, stock confirmed, applied exactly once', async ({ request }) => {

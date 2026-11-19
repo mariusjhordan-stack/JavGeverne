@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import { dateTime } from '../lib/format';
+import { useLanguage } from '../context/LanguageContext';
 
 // Mirrors the backend OrderStatus values; nothing here exists only in the interface.
 const STEPS = [
@@ -13,6 +14,7 @@ const STEPS = [
 const RANK = { PENDING: 0, PAYMENT_FAILED: 1, PAYMENT_PENDING: 1, PAID: 2, PROCESSING: 3, SHIPPED: 4, DELIVERED: 5 };
 
 export default function OrderTimeline({ order }) {
+  const { t } = useLanguage();
   const reachedAt = {};
   (order.history || []).forEach((h) => { reachedAt[h.to] = h.at; });
   const stopped = ['CANCELLED', 'REFUNDED'].includes(order.status);
@@ -21,7 +23,7 @@ export default function OrderTimeline({ order }) {
     : RANK[order.status] ?? 0;
 
   return (
-    <ol className="grid grid-cols-2 sm:grid-cols-6 gap-y-6" data-testid="order-timeline" aria-label="Order progress">
+    <ol className="grid grid-cols-2 sm:grid-cols-6 gap-y-6" data-testid="order-timeline" aria-label={t('Order progress')}>
       {STEPS.map((step, index) => {
         const done = index < rank || (index === rank && (index === 0 || order.status === step.key || rank > 1));
         const current = !stopped && index === rank;
@@ -34,7 +36,7 @@ export default function OrderTimeline({ order }) {
               </span>
               {index < STEPS.length - 1 && <span className={`hidden sm:block flex-1 h-px ml-2 ${index < rank ? 'bg-navy' : 'bg-gray-300'}`} />}
             </div>
-            <p className={`text-sm ${done || current ? 'text-navy font-medium' : 'text-gray-500'}`}>{step.label}</p>
+            <p className={`text-sm ${done || current ? 'text-navy font-medium' : 'text-gray-500'}`}>{t(step.label)}</p>
             {at && (done || current) && <p className="text-xs text-gray-500 mt-0.5">{dateTime(at)}</p>}
           </li>
         );

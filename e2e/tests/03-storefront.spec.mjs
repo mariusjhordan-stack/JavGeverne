@@ -2,7 +2,7 @@ import { test, expect } from 'playwright/test';
 import { ADMIN, login, createProduct, retireProduct, getProduct, unique, STUB } from './helpers.mjs';
 
 // The whole purchase in a real browser: storefront -> gateway -> services -> PostgreSQL,
-// with the Mercado Pago test double standing in for the provider's hosted checkout.
+// with the Stripe test double standing in for the provider's hosted checkout.
 test.describe('storefront purchase flow', () => {
   let admin; let watch; let other;
   const email = `${unique('shopper')}@cronos.test`;
@@ -133,12 +133,12 @@ test.describe('storefront purchase flow', () => {
     await page.goto(`/product/${watch.id}`);
     await page.getByRole('button', { name: /add to (cart|bag)/i }).click();
     await checkoutFromCart(page);
-    const orderId = new URL((await page.locator('form').first().getAttribute('action')), STUB).searchParams.get('pref');
-    expect(orderId).toBeTruthy();
+    const sessionId = new URL((await page.locator('form').first().getAttribute('action')), STUB).searchParams.get('session');
+    expect(sessionId).toBeTruthy();
     // Leave the provider without paying and open the "success" page by hand, as an attacker would.
-    const pref = await (await page.request.get(`${STUB}/__control/preferences`)).json();
-    const mine = pref.find((p) => p.id === orderId);
-    await page.goto(`/checkout/success?order=${mine.external_reference}&status=approved&payment_id=1`);
+    const sessions = await (await page.request.get(`${STUB}/__control/sessions`)).json();
+    const mine = sessions.find((session) => session.id === sessionId);
+    await page.goto(`/checkout/success?order=${mine.client_reference_id}&status=approved&payment_id=1`);
     const result = page.getByTestId('checkout-result');
     await expect(result).toHaveAttribute('data-order-status', 'PENDING', { timeout: 40_000 });
     await expect(result).not.toContainText(/payment confirmed/i);

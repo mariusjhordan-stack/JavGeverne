@@ -6,6 +6,7 @@ import { getProducts, getProductById } from '../api/catalog';
 import { useCart } from '../context/CartContext';
 import { useCompare, MAX_COMPARE } from '../context/CompareContext';
 import { money, withUnit } from '../lib/format';
+import { useLanguage } from '../context/LanguageContext';
 
 const ROWS = [
   ['Brand', (p) => p.brandName],
@@ -23,6 +24,7 @@ const ROWS = [
 ];
 
 export default function ComparePage() {
+  const { t } = useLanguage();
   const { addItem } = useCart();
   const { ids, add, remove } = useCompare();
   const [products, setProducts] = useState({});
@@ -51,8 +53,8 @@ export default function ComparePage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="bg-navy py-16 text-center">
-        <p className="text-gold tracking-[0.3em] uppercase text-xs mb-3">Side by side</p>
-        <h1 className="font-serif text-4xl text-white">Compare timepieces</h1>
+        <p className="text-gold tracking-[0.3em] uppercase text-xs mb-3">{t('Side by side')}</p>
+        <h1 className="font-serif text-4xl text-white">{t('Compare timepieces')}</h1>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-10">
@@ -63,7 +65,7 @@ export default function ComparePage() {
               <div key={id || `empty-${i}`} className="border border-gray-200 p-4 text-center relative min-h-[280px] flex flex-col items-center justify-center" data-testid="compare-slot">
                 {product ? (
                   <>
-                    <button onClick={() => remove(id)} aria-label={`Remove ${product.name}`} className="absolute top-2 right-2 text-gray-500 hover:text-red-700">
+                    <button onClick={() => remove(id)} aria-label={`${t('Remove watch')} ${product.name}`} className="absolute top-2 right-2 text-gray-500 hover:text-red-700">
                       <X size={18} />
                     </button>
                     {product.imageUrl && <img src={product.imageUrl} alt={product.name} className="w-32 h-32 object-cover mb-3" />}
@@ -72,19 +74,19 @@ export default function ComparePage() {
                     <p className="text-sm text-gray-700 mt-1">{money(product.price, product.currency)}</p>
                     {product.stock > 0 && (
                       <button
-                        onClick={() => { addItem(product, 1); toast.success('Added to bag'); }}
+                        onClick={() => { addItem(product, 1); toast.success(t('Added to bag')); }}
                         className="mt-3 flex items-center gap-1 text-xs text-navy border border-gray-300 px-3 py-1.5 hover:border-gold-dark transition-colors"
                       >
-                        <ShoppingBag size={12} /> Add to bag
+                        <ShoppingBag size={12} /> {t('Add to bag')}
                       </button>
                     )}
                   </>
                 ) : id ? (
-                  <span className="text-sm text-gray-500" role="status">Loading…</span>
+                  <span className="text-sm text-gray-500" role="status">{t('Loading…')}</span>
                 ) : (
                   <button onClick={() => setPicking(true)} className="flex flex-col items-center gap-2 text-gray-600 hover:text-gold-dark transition-colors">
                     <Plus size={32} />
-                    <span className="text-sm">Select watch</span>
+                    <span className="text-sm">{t('Select watch')}</span>
                   </button>
                 )}
               </div>
@@ -94,12 +96,12 @@ export default function ComparePage() {
 
         {picking && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setPicking(false)}>
-            <div role="dialog" aria-label="Select a watch" className="bg-white max-w-lg w-full max-h-[70vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div role="dialog" aria-label={t('Select a watch')} className="bg-white max-w-lg w-full max-h-[70vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 border-b border-gray-200">
                 <input
                   type="text"
-                  aria-label="Search watches"
-                  placeholder="Search watches..."
+                  aria-label={t('Search watches')}
+                  placeholder={t('Search watches...')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   autoFocus
@@ -132,7 +134,7 @@ export default function ComparePage() {
               <tbody>
                 {ROWS.map(([label, getter]) => (
                   <tr key={label} className="border-b border-gray-100 last:border-0">
-                    <th scope="row" className="px-4 py-3 text-left font-normal text-gray-600 text-xs uppercase tracking-wider w-40 bg-gray-50">{label}</th>
+                    <th scope="row" className="px-4 py-3 text-left font-normal text-gray-600 text-xs uppercase tracking-wider w-40 bg-gray-50">{t(label)}</th>
                     {selected.map((p) => <td key={p.id} className="px-4 py-3 text-navy first-letter:uppercase">{getter(p) || '—'}</td>)}
                   </tr>
                 ))}
@@ -140,7 +142,7 @@ export default function ComparePage() {
             </table>
           </div>
         ) : (
-          <p className="text-center text-gray-600 text-sm mt-8">Select at least two watches to compare their specifications.</p>
+          <p className="text-center text-gray-600 text-sm mt-8">{t('Select at least two watches to compare their specifications.')}</p>
         )}
       </div>
     </div>

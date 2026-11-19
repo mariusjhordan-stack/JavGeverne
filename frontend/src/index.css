@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+.app-toaster [data-sonner-toast][data-styled="true"] [data-close-button] {
+  position: static;
+  inset: auto;
+  order: 3;
+  flex-shrink: 0;
+  width: 32px;
+  height: 24px;
+  margin-left: 8px;
+  border: 0;
+  border-left: 1px solid var(--normal-border);
+  border-radius: 0;
+  background: transparent;
+  transform: none;
+}
+
+.app-toaster [data-sonner-toast][data-styled="true"] [data-icon] { order: 0; }
+.app-toaster [data-sonner-toast][data-styled="true"] [data-content] { order: 1; }
+.app-toaster [data-sonner-toast][data-styled="true"] [data-button],
+.app-toaster [data-sonner-toast][data-styled="true"] [data-cancel] { order: 2; }
+
 @theme {
   --color-gold: #c9a94e;
   --color-gold-light: #d9bf72;

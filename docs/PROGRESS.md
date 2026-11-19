@@ -1,7 +1,7 @@
 # Status
 
 Last full verification: all backend suites and the Playwright suite pass against PostgreSQL (see README for counts).
-**Not verified:** anything involving the real Mercado Pago API, the Docker images (no Docker daemon was available while developing; the compose files validate with `docker compose config`), a real SMTP server, and any internet deployment.
+**Not verified:** anything involving the real Stripe API, the Docker images (no Docker daemon was available while developing; the compose files validate with `docker compose config`), a real SMTP server, and any internet deployment.
 
 ## Done and tested
 * Gateway JWT verification, trusted identity headers, admin routes, internal paths closed, rate limiting.
@@ -14,7 +14,7 @@ Last full verification: all backend suites and the Playwright suite pass against
 * Production overlay (Caddy HTTPS, private network, non-root containers, memory limits, backups).
 
 ## Pending
-* **Mercado Pago Sandbox test with your credentials** (blocker for calling payments finished).
+* **Stripe test-mode checkout and webhook round-trip** (blocker for calling payments finished).
 * **Product reviews and ratings** were not implemented (planned rules: buyers with a paid order only, one per product, edit/delete own, admin moderation).
 * Frontend unit tests; accessibility audit with a screen reader; Lighthouse performance pass.
 * Replace representative photographs with the shop's own; real legal pages.

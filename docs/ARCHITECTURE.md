@@ -8,7 +8,7 @@
 | auth-service | 8081 | auth_db | Users, BCrypt, JWT issue, single-use refresh tokens, profile, addresses, admin user listing |
 | catalog-service | 8082 | catalog_db | Products, brands, categories, favourites, inventory and atomic per-order stock reservations |
 | order-service | 8083 | order_db | Orders priced from the catalogue, state machine and history, expiry of unpaid orders, fulfilment |
-| payment-service | 8084 | payment_db | Mercado Pago checkout, signed webhook, verification, idempotent payment events, reconciliation |
+| payment-service | 8084 | payment_db | Stripe Checkout, signed webhook, verification, idempotent payment events, reconciliation |
 | notification-service | 8085 | notification_db | Records and e-mails order and payment notifications |
 
 One PostgreSQL instance, one database per service, no cross-database foreign keys. Services talk to each other over HTTP on the private network.
@@ -24,7 +24,7 @@ One PostgreSQL instance, one database per service, no cross-database foreign key
 | payment → order | `POST /internal/orders/{id}/payment-result` | `APPROVED | REJECTED | PENDING | REFUNDED`, applied idempotently |
 
 There is no message broker: HTTP is enough for this scale and keeps failures visible. The trade-off is that a failed
-notification is not retried (it is logged and visible in the admin API); a failed payment-result is retried by Mercado Pago and by the reconciliation job.
+notification is not retried (it is logged and visible in the admin API); a failed payment-result is retried by Stripe and by the reconciliation job.
 
 ## Order states
 

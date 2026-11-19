@@ -1,46 +1,52 @@
-# Payments (Mercado Pago Checkout Pro)
+# Payments (Stripe Checkout)
 
 ## Flow
 
 1. The customer places an order (`POST /api/orders`): the catalogue reserves stock and returns official prices; the order is `PENDING`.
-2. `POST /api/payments/preference {orderId}`: payment-service reads **amount, currency and items from the order service**, checks the caller owns it,
-   creates a preference with `external_reference = orderId`, `notification_url`, return URLs and an expiry equal to the stock reservation, and returns the checkout URL.
-3. The browser goes to Mercado Pago, pays, and returns to `/checkout/{success|failure|pending}?order=…`. **That page believes nothing in the URL**: it calls
-   `POST /api/payments/order/{id}/sync` (the server asks Mercado Pago) and shows the order's real status.
-4. Mercado Pago calls `POST /api/payments/webhook?data.id=…&type=payment` with `x-signature` and `x-request-id`.
-   payment-service verifies the HMAC, **fetches the payment from Mercado Pago**, and checks reference, amount and currency against the stored checkout.
-5. Each distinct provider state is recorded once (`payment_events`, unique on payment id + status) and reported to order-service, which moves the order:
-   approved → `PAID` (stock confirmed, customer notified); rejected/cancelled → `PAYMENT_FAILED` (stock stays reserved for a retry); in process → `PAYMENT_PENDING`;
-   refunded → `REFUNDED` (stock released). If order-service does not acknowledge, nothing is stored and the provider's retry (or the 5-minute reconciliation job) repeats it.
+2. `POST /api/payments/preference {orderId}`: payment-service reads the amount, currency and items from order-service, checks ownership,
+   creates a Stripe Checkout Session with an expiry no later than the stock reservation, and returns Stripe's hosted checkout URL.
+3. The browser goes to Stripe Checkout and returns to `/checkout/success` or `/checkout/failure`. The return page does not trust URL parameters:
+   it calls `POST /api/payments/order/{id}/sync`, and payment-service retrieves the Checkout Sessions from Stripe.
+4. Stripe calls `POST /api/payments/webhook`. payment-service verifies `Stripe-Signature` against the raw request body and the webhook signing
+   secret, then retrieves the Checkout Session from Stripe before processing it.
+5. Amount, currency and order reference are checked against the stored checkout. Distinct provider state changes are recorded once in
+   `payment_events`; order-service moves the order to paid, failed, pending or refunded. If order-service does not acknowledge, the event is
+   not committed and webhook retries or reconciliation can process it again.
 6. Unpaid orders are cancelled after `ORDER_RESERVATION_TTL_MINUTES` and their stock released.
 
-## Configuration (payment-service environment)
+## Configuration
 
 | Variable | Meaning |
 |---|---|
-| `MERCADOPAGO_ACCESS_TOKEN` | Server-side access token. `TEST-…` selects the sandbox checkout URL. Empty = checkout answers 503. |
-| `MERCADOPAGO_WEBHOOK_SECRET` | "Secret signature" from the Mercado Pago webhooks page. Empty = every webhook is refused. |
-| `FRONTEND_URL` | Public storefront URL; return URLs default to `FRONTEND_URL/checkout/{success,failure,pending}`. |
-| `MP_SUCCESS_URL`, `MP_FAILURE_URL`, `MP_PENDING_URL` | Optional overrides. |
-| `MP_WEBHOOK_URL` | Public HTTPS URL of the webhook, e.g. `https://cronosgeneve.com/api/payments/webhook`. |
-| `MP_WEBHOOK_MAX_AGE_SECONDS` | Accepted age of a signature timestamp (default 900). |
+| `STRIPE_SECRET_KEY` | Server-side Stripe secret key. Use a test-mode `sk_test_...` key while testing. Empty disables online checkout. |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signing secret (`whsec_...`) for the endpoint or Stripe CLI listener. Empty means every webhook is refused. |
+| `FRONTEND_URL` | Storefront URL used for return URLs; defaults to `FRONTEND_URL/checkout/{success,failure}`. |
+| `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL` | Optional return URL overrides. |
+| `STRIPE_WEBHOOK_MAX_AGE_SECONDS` | Accepted signature timestamp age (default 300 seconds). |
 
-`auto_return` is sent only when the success URL is HTTPS (Mercado Pago rejects it otherwise).
+This flow uses Stripe's hosted Checkout page, so the publishable `pk_test_...` key is not needed in the application. Never put a secret key
+in frontend configuration or source control. Configure keys only in the ignored local `.env`.
 
 ## What is and is not proven
 
 | Piece | Status |
 |---|---|
-| Our webhook/HMAC/idempotency/amount logic, state changes, stock, notifications | **Tested** against a stand-in for the API (unit, integration and e2e) |
-| Preference payload and API paths match Mercado Pago's documentation | Reviewed against the documented shape; **not yet accepted by the real API** |
-| Currency: all prices are `USD` | **Unverified.** Mercado Pago accounts accept only their country's currency; if your test account is, e.g., PEN, set the catalogue currency accordingly |
-| Redirect, payment with a test card, real signed webhook, return page | **Not tested with Mercado Pago.** Do the Sandbox test below |
+| Checkout request formation, signature verification, amount/currency/reference checks, idempotency, state transitions and reconciliation | Tested against a local Stripe API stand-in |
+| Checkout Session request and webhook handling against Stripe's real test-mode API | Not yet tested |
+| Hosted redirect, test card, live Stripe webhook and return page | Not yet tested |
 
-## Sandbox test (needs your accounts)
+## Test-mode checkout
 
-1. In the Mercado Pago developer panel create an application, then two **test users** (seller and buyer).
-2. Copy the seller's **test access token** and, under *Webhooks*, set the URL to your public HTTPS endpoint (use a tunnel such as `cloudflared tunnel --url http://localhost:8080` while developing) and copy the **secret signature**.
-3. Put them in `.env`: `MERCADOPAGO_ACCESS_TOKEN=TEST-…`, `MERCADOPAGO_WEBHOOK_SECRET=…`, `MP_WEBHOOK_URL=https://<tunnel>/api/payments/webhook`, `FRONTEND_URL=https://<tunnel>` (or `http://localhost:5173` for the return trip), then `docker compose up --build`.
-4. Sign in, add a watch to the bag, check out, pay with a Mercado Pago test card as the buyer test user.
-5. Verify: you land on `/checkout/success?order=…` and see "Payment confirmed"; `/admin/payments` shows an `approved` payment with a provider reference; the order is `PAID`; stock dropped by one; a notification exists. Repeat with a card that is rejected (expect `PAYMENT_FAILED` and a retry button).
-6. Only after this passes may the integration be called working.
+1. In the Stripe Dashboard, create or use a test-mode account and issue a new test secret key. If a secret key was exposed, revoke it first.
+2. Create a local `.env` from `.env.example` and set `STRIPE_SECRET_KEY=sk_test_...`.
+3. Start the stack and forward webhooks from the Stripe CLI:
+
+   ```bash
+   stripe listen --forward-to localhost:8080/api/payments/webhook
+   ```
+
+   Copy the CLI's `whsec_...` value into `.env` as `STRIPE_WEBHOOK_SECRET`, then restart the payment-service.
+4. Sign in, add a watch to the bag, and check out. Use a Stripe test card such as `4242 4242 4242 4242` with a future expiry and any CVC.
+5. Verify the return page reports a confirmed payment, the order is `PAID`, stock is confirmed, and `/admin/payments` shows the payment.
+   Also test a declined test payment and confirm it does not mark the order paid.
+6. Keep the keys in test mode until the full round-trip has been verified. Do not send secret keys in chat or commit them.

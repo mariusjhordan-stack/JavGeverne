@@ -14,9 +14,9 @@ app:
   security:
     internal-token: test-internal-token-0123456789abcdef0123
 
-mercadopago:
-  access-token: TEST-access-token
-  webhook-secret: test-webhook-secret-key
+stripe:
+  secret-key: sk_test_unit-test-key
+  webhook-secret: whsec_test-webhook-secret-key
   frontend-url: https://shop.cronos.test
-  webhook-url: https://shop.cronos.test/api/payments/webhook
+  webhook-max-age-seconds: 900
   reconcile-enabled: false

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Starts everything the end-to-end suite needs and runs it:
-#   services on PostgreSQL (dev profile) + Mercado Pago test double + storefront dev server.
+#   services on PostgreSQL (dev profile) + Stripe test double + storefront dev server.
 # Requires PostgreSQL reachable at localhost:5432 and a .env (scripts/gen-env.sh).
 #   scripts/e2e.sh [--build] [-- <extra playwright args>]
 set -euo pipefail
@@ -10,16 +10,16 @@ BUILD=""; [ "${1:-}" = "--build" ] && { BUILD="--build"; shift; }
 [ "${1:-}" = "--" ] && shift
 
 cleanup() {
-  [ -f "$RUN/mp-stub.pid" ] && kill "$(cat "$RUN/mp-stub.pid")" 2>/dev/null || true
+  [ -f "$RUN/stripe-stub.pid" ] && kill "$(cat "$RUN/stripe-stub.pid")" 2>/dev/null || true
   [ -f "$RUN/frontend.pid" ] && kill "$(cat "$RUN/frontend.pid")" 2>/dev/null || true
-  rm -f "$RUN/mp-stub.pid" "$RUN/frontend.pid"
+  rm -f "$RUN/stripe-stub.pid" "$RUN/frontend.pid"
   "$ROOT/scripts/dev-stack.sh" stop >/dev/null || true
 }
 trap cleanup EXIT
 cleanup
 
-MERCADOPAGO_WEBHOOK_SECRET=e2e-webhook-secret nohup node "$ROOT/e2e/mp-stub/server.mjs" > "$RUN/logs/mp-stub.log" 2>&1 < /dev/null &
-echo $! > "$RUN/mp-stub.pid"
+STRIPE_WEBHOOK_SECRET=whsec_e2e-webhook-secret nohup node "$ROOT/e2e/stripe-stub/server.mjs" > "$RUN/logs/stripe-stub.log" 2>&1 < /dev/null &
+echo $! > "$RUN/stripe-stub.pid"
 
 "$ROOT/scripts/dev-stack.sh" start $BUILD --env "$ROOT/e2e/stack.env"
 

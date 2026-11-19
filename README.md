@@ -1,13 +1,13 @@
 # Cronos Genève
 
 Academic e-commerce demonstration for Swiss watches: six Spring Boot microservices (Java 21), a React storefront,
-PostgreSQL and Mercado Pago Checkout Pro. It is **not** a real shop and is not affiliated with Rolex, Omega or TAG Heuer.
+PostgreSQL and Stripe Checkout. It is **not** a real shop and is not affiliated with Rolex, Omega or TAG Heuer.
 
 ```
 Browser ─▶ Storefront (nginx) ─▶ API gateway :8080 ─▶ auth :8081 · catalog :8082 · order :8083 · payment :8084 · notification :8085
                                        │ verifies the JWT, injects the user, never routes /internal
                                        └─▶ PostgreSQL (auth_db, catalog_db, order_db, payment_db, notification_db)
-Mercado Pago ──webhook (HMAC)──▶ gateway ─▶ payment ─▶ order ─▶ catalog (stock) ─▶ notification
+Stripe ──webhook (HMAC)──▶ gateway ─▶ payment ─▶ order ─▶ catalog (stock) ─▶ notification
 ```
 
 Read next: [architecture](docs/ARCHITECTURE.md) · [security](docs/SECURITY.md) · [payments](docs/PAYMENTS.md) ·
@@ -33,7 +33,7 @@ The `dev` profile also creates two demo accounts (`admin@cronos.com` / `Admin123
 shows quick-fill buttons on the login page **in dev builds only**. Production uses `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`
 instead and has no demo users. The catalogue migration seeds 12 sample watches.
 
-Without Mercado Pago credentials the store works but checkout answers *"online payment is not available"*, and webhooks are refused.
+Without Stripe credentials the store works but checkout answers *"online payment is not available"*, and webhooks are refused.
 
 ## Tests
 
@@ -48,12 +48,12 @@ scripts/e2e.sh --build      # Playwright against the real stack on PostgreSQL (n
 | auth-service | 41 | register/login/refresh rotation, profile, addresses, admin listing |
 | catalog-service | 14 | search/sort, admin CRUD, atomic reservations, no overselling under concurrency, favourites |
 | order-service | 10 | prices from the catalogue, ownership, state machine, payment results, expiry |
-| payment-service | 13 | webhook signature, amount/currency/reference checks, idempotency, retries, fail-closed |
+| payment-service | 8 | webhook signature, amount/currency/reference checks, idempotency, retries, fail-closed |
 | notification-service | 5 | starts with and without SMTP, honest SENT/SKIPPED/FAILED, a real SMTP conversation |
 | e2e (Playwright) | 25 | security and service contracts over HTTP, plus the browser purchase flow |
 
-The e2e suite uses `e2e/mp-stub`, a stand-in for the Mercado Pago API. **It proves our handling of what the provider reports,
-not that Mercado Pago accepts our requests.** The Sandbox procedure is in [docs/PAYMENTS.md](docs/PAYMENTS.md).
+The e2e suite uses `e2e/stripe-stub`, a stand-in for Stripe. **It proves our handling of what the provider reports,
+not that Stripe accepts our requests.** The test-mode procedure is in [docs/PAYMENTS.md](docs/PAYMENTS.md).
 
 ## Repository map
 

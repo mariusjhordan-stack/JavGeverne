@@ -9,16 +9,16 @@ the architecture is unchanged. Caddy obtains and renews the HTTPS certificate by
 
 ```
 Internet ─▶ Caddy :80/:443 ─▶ storefront (nginx) ─▶ /api ─▶ gateway ─▶ services ─▶ PostgreSQL
-Mercado Pago ─▶ https://cronosgeneve.com/api/payments/webhook (same path)
+Stripe ─▶ https://cronosgeneve.com/api/payments/webhook (same path)
 ```
 
 1. Buy the domain; create DNS `A` records for `cronosgeneve.com` and `www` pointing at the server. Same-origin hosting means no CORS and no `api.` subdomain is needed
    (use `api.cronosgeneve.com` only if the storefront moves to separate static hosting; then set `ALLOWED_ORIGINS` and `VITE_API_URL`).
 2. On the server (Ubuntu): install Docker, clone the repository, open ports 22/80/443 only.
 3. `scripts/gen-env.sh`, then edit `.env`: `DOMAIN`, `FRONTEND_URL=https://cronosgeneve.com`, `ALLOWED_ORIGINS=https://cronosgeneve.com`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`,
-   `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`, `MP_WEBHOOK_URL=https://cronosgeneve.com/api/payments/webhook`, optional SMTP, and `chmod 600 .env`.
+   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, optional SMTP, and `chmod 600 .env`.
 4. `docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d --build`. Only Caddy is published; PostgreSQL and the gateway are private.
-5. Check `https://cronosgeneve.com`, sign in with the admin from `.env`, and run the Mercado Pago Sandbox test ([PAYMENTS.md](PAYMENTS.md)) from the real domain **before** switching to production credentials.
+5. Check `https://cronosgeneve.com`, sign in with the admin from `.env`, and run the Stripe test-mode flow ([PAYMENTS.md](PAYMENTS.md)) from the real domain **before** switching to production credentials.
 6. Backups: the `backup` service writes a daily dump of each database to `./backups` (14 days). Copy them off the server regularly; test a restore once.
 
 `TRUSTED_PROXY_COUNT` is 2 in the production overlay (Caddy → nginx → gateway). The `prod` profile creates no demo users.
@@ -32,6 +32,6 @@ slows the first request after idle; use paid instances. The provider supplies HT
 ## Before real customers
 
 * Remove the sample catalogue (migrations V4/V7) and load your own products and photographs ([IMAGE-SOURCES.md](IMAGE-SOURCES.md)).
-* Confirm the currency your Mercado Pago account accepts and update product currency/prices.
+* Confirm the Stripe account and product currencies are configured as intended.
 * Replace the academic notices with real legal pages (terms, privacy, returns).
 * Consider managed PostgreSQL with point-in-time recovery, log shipping, uptime monitoring and moving tokens to HttpOnly cookies.
